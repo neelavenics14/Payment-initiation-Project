@@ -1,1 +1,231 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { getAllBatches, setStatus, deleteBatch } from "../../common/storage/payrollStore";
 
+export default function ManagePayroll() {
+  const [batches, setBatches] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6; // fixed number of records per page
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setBatches(getAllBatches());
+  }, []);
+
+  const refresh = () => setBatches(getAllBatches());
+
+  const editBatch = (batchId) => navigate("/payroll", { state: { batchId } });
+
+  const submitDraft = (batchId) => {
+    setStatus(batchId, "Submitted", { updatedAt: new Date().toISOString() });
+    refresh();
+  };
+
+  const remove = (batchId) => {
+    deleteBatch(batchId);
+    refresh();
+  };
+
+  const viewDetails = (batch) => setSelectedBatch(batch);
+  const closeModal = () => setSelectedBatch(null);
+
+  const calculateTotalAmount = (batch) => {
+    return batch.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  };
+
+  // Pagination logic
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentBatches = batches.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(batches.length / itemsPerPage);
+
+  return (
+    <div className="container-fluid p-0" style={{ marginTop: "0px" }}>
+      <div className="card" style={{ marginTop: "0px" }}>
+        <div className="card-header text-center p-2">
+          <h2 className="mb-0">Manage Payroll</h2>
+        </div>
+
+        <div className="card-body p-2">
+          <table className="table table-bordered text-center align-middle mb-0">
+            <thead className="table-light">
+              <tr>
+                <th>Sl. No</th>
+                <th>Batch ID</th>
+                <th>Date Created</th>
+                <th>Payments Count</th>
+                <th>Total Amount</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentBatches.length === 0 && (
+                <tr>
+                  <td colSpan="7">No payroll batches found.</td>
+                </tr>
+              )}
+              {currentBatches.map((b, idx) => (
+                <tr key={b.id}>
+                  <td>{indexOfFirst + idx + 1}</td>
+                  <td>{b.id}</td>
+                  <td>
+                    {b.createdAt ? new Date(b.createdAt).toLocaleString() : "-"}
+                  </td>
+                  <td>{b.payments.length}</td>
+                  <td>
+                    {calculateTotalAmount(b)} {b.instruction.paymentCurrency}
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        "badge " +
+                        (b.status === "Approved"
+                          ? "bg-success"
+                          : b.status === "Rejected"
+                          ? "bg-danger"
+                          : b.status === "Submitted"
+                          ? "bg-warning text-dark"
+                          : "bg-secondary")
+                      }
+                    >
+                      {b.status}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-sm btn-info me-2"
+                      onClick={() => viewDetails(b)}
+                    >
+                      View
+                    </button>
+                    {b.status === "Draft" && (
+                      <>
+                        <button
+                          className="btn btn-sm btn-primary me-2"
+                          onClick={() => editBatch(b.id)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-sm btn-success me-2"
+                          onClick={() => submitDraft(b.id)}
+                        >
+                          Submit
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => remove(b.id)}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Pagination - same as ApprovePayroll */}
+          {totalPages > 0 && (
+            <div className="d-flex justify-content-center mt-3">
+              <button
+                className="btn btn-secondary me-2"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                Prev
+              </button>
+              <span className="align-self-center">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                className="btn btn-secondary ms-2"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modal for details */}
+      {selectedBatch && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", background: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  Batch Details — {selectedBatch.id}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={closeModal}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <h6>Instruction Details</h6>
+                <ul>
+                  <li>
+                    <strong>Currency:</strong>{" "}
+                    {selectedBatch.instruction.paymentCurrency}
+                  </li>
+                  <li>
+                    <strong>Debit Account:</strong>{" "}
+                    {selectedBatch.instruction.debitAccount}
+                  </li>
+                  <li>
+                    <strong>Date:</strong> {selectedBatch.instruction.date}
+                  </li>
+                </ul>
+
+                <h6>Payments</h6>
+                <table className="table table-sm table-bordered">
+                  <thead>
+                    <tr>
+                      <th>Reference</th>
+                      <th>Payee Role</th>
+                      <th>Payee Name</th>
+                      <th>Account Number</th>
+                      <th>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedBatch.payments.map((p, idx) => (
+                      <tr key={idx}>
+                        <td>{p.reference}</td>
+                        <td>{p.payeeDetails}</td>
+                        <td>{p.payeeName}</td>
+                        <td>{p.accountNumber}</td>
+                        <td>
+                          {p.amount} {selectedBatch.instruction.paymentCurrency}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={closeModal}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
