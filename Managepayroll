@@ -1,4 +1,4 @@
-[4:25 pm, 29/8/2025] neelavenics14: import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllBatches, setStatus, deleteBatch } from "../../common/storage/payrollStore";
 
@@ -6,30 +6,7 @@ export default function ManagePayroll() {
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [openDropdown, setOpenDropdown] = useState(null); // track which row dropdown is open
-  const itemsPerPage = 6;
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    setBatches(getAllBatches());
-  }, []);
-
-  const refresh = () => setBatches(getAllBatches());
-
-  const editBatch = (batchId) => navigate("/payroll", { state: { batchId } });
-
-  const submitDraft = …
-[4:43 pm, 29/8/2025] neelavenics14: Ho..
-[4:44 pm, 29/8/2025] neelavenics14: import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { getAllBatches, setStatus, deleteBatch } from "../../common/storage/payrollStore";
-
-export default function ManagePayroll() {
-  const [batches, setBatches] = useState([]);
-  const [selectedBatch, setSelectedBatch] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [openDropdown, setOpenDropdown] = useState(null); // NEW STATE
-  const itemsPerPage = 6;
+  const itemsPerPage = 6; 
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -116,70 +93,52 @@ export default function ManagePayroll() {
                       {b.status}
                     </span>
                   </td>
-                  <td style={{ position: "relative" }}>
-                    {/* If only one action (non-Draft) → direct View button */}
-                    {b.status !== "Draft" ? (
-                      <button
-                        className="btn btn-sm btn-info"
-                        onClick={() => viewDetails(b)}
-                      >
-                        View
-                      </button>
-                    ) : (
-                      /* If multiple actions (Draft) → dropdown */
-                      <div className="d-inline-block position-relative">
-                        <button
-                          className="btn btn-sm btn-secondary"
-                          onClick={() =>
-                            setOpenDropdown(openDropdown === b.id ? null : b.id)
-                          }
-                        >
-                          Actions ▾
-                        </button>
+                  <td>
+                    {/* Always show View directly */}
+                    <button
+                      className="btn btn-sm btn-info me-2"
+                      onClick={() => viewDetails(b)}
+                    >
+                      View
+                    </button>
 
-                        {openDropdown === b.id && (
-                          <div
-                            className="border rounded bg-white shadow position-absolute"
-                            style={{ right: 0, zIndex: 1000, minWidth: 130 }}
-                          >
+                    {/* If Draft -> group Edit/Submit/Delete into dropdown */}
+                    {b.status === "Draft" && (
+                      <div className="btn-group">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-secondary dropdown-toggle"
+                          data-bs-toggle="dropdown"
+                          aria-expanded="false"
+                        >
+                          Actions
+                        </button>
+                        <ul className="dropdown-menu">
+                          <li>
                             <button
-                              className="dropdown-item w-100 text-start"
-                              onClick={() => {
-                                viewDetails(b);
-                                setOpenDropdown(null);
-                              }}
-                            >
-                              View
-                            </button>
-                            <button
-                              className="dropdown-item w-100 text-start"
-                              onClick={() => {
-                                editBatch(b.id);
-                                setOpenDropdown(null);
-                              }}
+                              className="dropdown-item"
+                              onClick={() => editBatch(b.id)}
                             >
                               Edit
                             </button>
+                          </li>
+                          <li>
                             <button
-                              className="dropdown-item w-100 text-start"
-                              onClick={() => {
-                                submitDraft(b.id);
-                                setOpenDropdown(null);
-                              }}
+                              className="dropdown-item"
+                              onClick={() => submitDraft(b.id)}
                             >
                               Submit
                             </button>
+                          </li>
+                          <li>
                             <button
-                              className="dropdown-item w-100 text-start text-danger"
-                              onClick={() => {
-                                remove(b.id);
-                                setOpenDropdown(null);
-                              }}
+                              className="dropdown-item text-danger"
+                              onClick={() => remove(b.id)}
                             >
                               Delete
                             </button>
-                          </div>
-                        )}
+                          </li>
+                        </ul>
                       </div>
                     )}
                   </td>
@@ -273,7 +232,16 @@ export default function ManagePayroll() {
                   </tbody>
                 </table>
               </div>
+
               <div className="modal-footer">
+                {/* Restored Print button */}
+                <button
+                  type="button"
+                  className="btn btn-outline-primary"
+                  onClick={() => window.print()}
+                >
+                  Print
+                </button>
                 <button
                   type="button"
                   className="btn btn-secondary"
