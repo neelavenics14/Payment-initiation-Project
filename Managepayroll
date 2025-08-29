@@ -6,7 +6,7 @@ export default function ManagePayroll() {
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6; 
+  const itemsPerPage = 6; // fixed number of records per page
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -94,52 +94,35 @@ export default function ManagePayroll() {
                     </span>
                   </td>
                   <td>
-                    {/* Always show View directly */}
+                    {/* Always show View */}
                     <button
                       className="btn btn-sm btn-info me-2"
                       onClick={() => viewDetails(b)}
                     >
                       View
                     </button>
-
-                    {/* If Draft -> group Edit/Submit/Delete into dropdown */}
+                    {/* Show edit/delete/submit only in Draft */}
                     {b.status === "Draft" && (
-                      <div className="btn-group">
+                      <>
                         <button
-                          type="button"
-                          className="btn btn-sm btn-secondary dropdown-toggle"
-                          data-bs-toggle="dropdown"
-                          aria-expanded="false"
+                          className="btn btn-sm btn-primary me-2"
+                          onClick={() => editBatch(b.id)}
                         >
-                          Actions
+                          Edit
                         </button>
-                        <ul className="dropdown-menu">
-                          <li>
-                            <button
-                              className="dropdown-item"
-                              onClick={() => editBatch(b.id)}
-                            >
-                              Edit
-                            </button>
-                          </li>
-                          <li>
-                            <button
-                              className="dropdown-item"
-                              onClick={() => submitDraft(b.id)}
-                            >
-                              Submit
-                            </button>
-                          </li>
-                          <li>
-                            <button
-                              className="dropdown-item text-danger"
-                              onClick={() => remove(b.id)}
-                            >
-                              Delete
-                            </button>
-                          </li>
-                        </ul>
-                      </div>
+                        <button
+                          className="btn btn-sm btn-success me-2"
+                          onClick={() => submitDraft(b.id)}
+                        >
+                          Submit
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => remove(b.id)}
+                        >
+                          Delete
+                        </button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -190,7 +173,11 @@ export default function ManagePayroll() {
                   onClick={closeModal}
                 ></button>
               </div>
-              <div className="modal-body">
+
+              {/* ✅ Only this section will be printed */}
+              <div className="modal-body" id="printSection">
+                <h5>Batch Details — {selectedBatch.id}</h5>
+
                 <h6>Instruction Details</h6>
                 <ul>
                   <li>
@@ -233,12 +220,21 @@ export default function ManagePayroll() {
                 </table>
               </div>
 
+              {/* Footer (not printed) */}
               <div className="modal-footer">
-                {/* Restored Print button */}
                 <button
                   type="button"
                   className="btn btn-outline-primary"
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    const printContent = document.getElementById("printSection").innerHTML;
+                    const printWindow = window.open("", "", "height=600,width=800");
+                    printWindow.document.write("<html><head><title>Payroll Batch</title>");
+                    printWindow.document.write("</head><body>");
+                    printWindow.document.write(printContent);
+                    printWindow.document.write("</body></html>");
+                    printWindow.document.close();
+                    printWindow.print();
+                  }}
                 >
                   Print
                 </button>
