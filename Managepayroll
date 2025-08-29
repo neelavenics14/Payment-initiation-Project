@@ -6,7 +6,8 @@ export default function ManagePayroll() {
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6; // fixed number of records per page
+  const [openDropdown, setOpenDropdown] = useState(null); // track which row dropdown is open
+  const itemsPerPage = 6;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export default function ManagePayroll() {
     return batch.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   };
 
-  // Pagination logic
+  // Pagination
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
   const currentBatches = batches.slice(indexOfFirst, indexOfLast);
@@ -94,35 +95,67 @@ export default function ManagePayroll() {
                     </span>
                   </td>
                   <td>
-                    <div className="d-flex justify-content-center flex-wrap gap-2">
+                    {/* Custom dropdown */}
+                    <div className="position-relative d-inline-block">
                       <button
-                        className="btn btn-sm btn-info"
-                        onClick={() => viewDetails(b)}
+                        className="btn btn-sm btn-secondary"
+                        onClick={() =>
+                          setOpenDropdown(openDropdown === b.id ? null : b.id)
+                        }
                       >
-                        View
+                        Actions ▾
                       </button>
 
-                      {b.status === "Draft" && (
-                        <>
+                      {openDropdown === b.id && (
+                        <div
+                          className="border rounded bg-white shadow position-absolute"
+                          style={{
+                            zIndex: 1000,
+                            minWidth: "130px",
+                            right: 0,
+                          }}
+                        >
                           <button
-                            className="btn btn-sm btn-primary"
-                            onClick={() => editBatch(b.id)}
+                            className="dropdown-item w-100 text-start"
+                            onClick={() => {
+                              viewDetails(b);
+                              setOpenDropdown(null);
+                            }}
                           >
-                            Edit
+                            View
                           </button>
-                          <button
-                            className="btn btn-sm btn-success"
-                            onClick={() => submitDraft(b.id)}
-                          >
-                            Submit
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => remove(b.id)}
-                          >
-                            Delete
-                          </button>
-                        </>
+                          {b.status === "Draft" && (
+                            <>
+                              <button
+                                className="dropdown-item w-100 text-start"
+                                onClick={() => {
+                                  editBatch(b.id);
+                                  setOpenDropdown(null);
+                                }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="dropdown-item w-100 text-start"
+                                onClick={() => {
+                                  submitDraft(b.id);
+                                  setOpenDropdown(null);
+                                }}
+                              >
+                                Submit
+                              </button>
+                              <button
+                                className="dropdown-item w-100 text-start text-danger"
+                                onClick={() => {
+                                  remove(b.id);
+                                  setOpenDropdown(null);
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
                   </td>
@@ -131,7 +164,7 @@ export default function ManagePayroll() {
             </tbody>
           </table>
 
-          {/* Pagination - same as ApprovePayroll */}
+          {/* Pagination */}
           {totalPages > 0 && (
             <div className="d-flex justify-content-center mt-3">
               <button
