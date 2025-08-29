@@ -104,54 +104,59 @@ export default function ManagePayroll() {
                     </span>
                   </td>
                   <td>
-                    <div className="dropdown">
+                    {b.status === "Draft" ? (
+                      <div className="dropdown">
+                        <button
+                          className="btn btn-sm btn-secondary dropdown-toggle"
+                          type="button"
+                          data-bs-toggle="dropdown"
+                          aria-expanded="false"
+                        >
+                          Actions
+                        </button>
+                        <ul className="dropdown-menu">
+                          <li>
+                            <button
+                              className="dropdown-item"
+                              onClick={() => viewDetails(b)}
+                            >
+                              View
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              className="dropdown-item"
+                              onClick={() => editBatch(b.id)}
+                            >
+                              Edit
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              className="dropdown-item"
+                              onClick={() => submitDraft(b.id)}
+                            >
+                              Submit
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              className="dropdown-item text-danger"
+                              onClick={() => remove(b.id)}
+                            >
+                              Delete
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    ) : (
                       <button
-                        className="btn btn-sm btn-secondary dropdown-toggle"
-                        type="button"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
+                        className="btn btn-sm btn-info"
+                        onClick={() => viewDetails(b)}
                       >
-                        Actions
+                        View
                       </button>
-                      <ul className="dropdown-menu">
-                        <li>
-                          <button
-                            className="dropdown-item"
-                            onClick={() => viewDetails(b)}
-                          >
-                            View
-                          </button>
-                        </li>
-                        {b.status === "Draft" && (
-                          <>
-                            <li>
-                              <button
-                                className="dropdown-item"
-                                onClick={() => editBatch(b.id)}
-                              >
-                                Edit
-                              </button>
-                            </li>
-                            <li>
-                              <button
-                                className="dropdown-item"
-                                onClick={() => submitDraft(b.id)}
-                              >
-                                Submit
-                              </button>
-                            </li>
-                            <li>
-                              <button
-                                className="dropdown-item text-danger"
-                                onClick={() => remove(b.id)}
-                              >
-                                Delete
-                              </button>
-                            </li>
-                          </>
-                        )}
-                      </ul>
-                    </div>
+                    )}
                   </td>
                 </tr>
               ))}
