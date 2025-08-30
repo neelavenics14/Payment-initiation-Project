@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllBatches, setStatus, deleteBatch } from "../../common/storage/payrollStore";
+import BackToDashboard from "../../common/components/BackToDashboard";
+import { getAllBatches, setStatus, deleteBatch, downloadText } from "../../common/storage/payrollStore";
 
 export default function ManagePayroll() {
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6; // fixed number of records per page
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,128 +33,151 @@ export default function ManagePayroll() {
     return batch.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   };
 
-  // Pagination logic
-  const indexOfLast = currentPage * itemsPerPage;
-  const indexOfFirst = indexOfLast - itemsPerPage;
-  const currentBatches = batches.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(batches.length / itemsPerPage);
+  const downloadSummary = (batch) => {
+    const lines = [
+      Payroll Batch Summary — ${batch.id},
+      Status: ${batch.status},
+      Created: ${batch.createdAt ? new Date(batch.createdAt).toLocaleString() : "-"},
+      Updated: ${batch.updatedAt ? new Date(batch.updatedAt).toLocaleString() : "-"},
+      Currency: ${batch.instruction.paymentCurrency},
+      Debit Account: ${batch.instruction.debitAccount},
+      Date: ${batch.instruction.date},
+      "",
+      "Payments:",
+      ...batch.payments.map(
+        (p, i) =>
+          ${i + 1}. ${p.payeeName} | ${p.payeeDetails} | ${p.accountNumber} | ${p.amount} ${batch.instruction.paymentCurrency} | Ref: ${p.reference}
+      ),
+    ];
+    downloadText(Payroll_${batch.id}_Summary.txt, lines.join("\n"));
+  };
+
+  // ✅ Keep your original printBatch with logo + styles
+  const printBatch = () => {
+    const html = document.getElementById("batch-print-section").innerHTML;
+    const w = window.open("", "_blank");
+    w.document.write(`
+      <html>
+        <head>
+          <title>Payroll Batch ${selectedBatch.id}</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .brand-header { display: flex; align-items: center; gap: 10px; border-bottom: 3px solid #0072CE; padding-bottom: 10px; margin-bottom: 20px; }
+            .brand-header img { height: 50px; }
+            .brand-title { font-size: 24px; font-weight: bold; background: linear-gradient(90deg, #0072CE, #00A859); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+            h6 { background: linear-gradient(90deg, #0072CE, #00A859); color: white; padding: 5px; border-radius: 4px; margin-top: 20px; }
+            table { border: 1px solid #ddd !important; }
+            th { background-color: #f1f1f1; }
+            td, th { padding: 6px !important; border: 1px solid #ccc !important; }
+          </style>
+        </head>
+        <body>
+          <div class="brand-header">
+            <img src="./sc-logo.png" alt="Standard Chartered Logo" />
+            <span class="brand-title">Payroll Batch Summary</span>
+          </div>
+          ${html}
+        </body>
+      </html>
+    `);
+    w.document.close();
+    w.print();
+  };
 
   return (
-    <div className="container-fluid p-0" style={{ marginTop: "0px" }}>
-      <div className="card" style={{ marginTop: "0px" }}>
-        <div className="card-header text-center p-2">
-          <h2 className="mb-0">Manage Payroll</h2>
-        </div>
-
-        <div className="card-body p-2">
-          <table className="table table-bordered text-center align-middle mb-0">
-            <thead className="table-light">
-              <tr>
-                <th>Sl. No</th>
-                <th>Batch ID</th>
-                <th>Date Created</th>
-                <th>Payments Count</th>
-                <th>Total Amount</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentBatches.length === 0 && (
-                <tr>
-                  <td colSpan="7">No payroll batches found.</td>
-                </tr>
-              )}
-              {currentBatches.map((b, idx) => (
-                <tr key={b.id}>
-                  <td>{indexOfFirst + idx + 1}</td>
-                  <td>{b.id}</td>
-                  <td>
-                    {b.createdAt ? new Date(b.createdAt).toLocaleString() : "-"}
-                  </td>
-                  <td>{b.payments.length}</td>
-                  <td>
-                    {calculateTotalAmount(b)} {b.instruction.paymentCurrency}
-                  </td>
-                  <td>
-                    <span
-                      className={
-                        "badge " +
-                        (b.status === "Approved"
-                          ? "bg-success"
-                          : b.status === "Rejected"
-                          ? "bg-danger"
-                          : b.status === "Submitted"
-                          ? "bg-warning text-dark"
-                          : "bg-secondary")
-                      }
-                    >
-                      {b.status}
-                    </span>
-                  </td>
-                  <td>
-                    {/* Always show View */}
-                    <button
-                      className="btn btn-sm btn-info me-2"
-                      onClick={() => viewDetails(b)}
-                    >
-                      View
-                    </button>
-                    {/* Show edit/delete/submit only in Draft */}
-                    {b.status === "Draft" && (
-                      <>
-                        <button
-                          className="btn btn-sm btn-primary me-2"
-                          onClick={() => editBatch(b.id)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="btn btn-sm btn-success me-2"
-                          onClick={() => submitDraft(b.id)}
-                        >
-                          Submit
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => remove(b.id)}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Pagination */}
-          {totalPages > 0 && (
-            <div className="d-flex justify-content-center mt-3">
-              <button
-                className="btn btn-secondary me-2"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-              >
-                Prev
-              </button>
-              <span className="align-self-center">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                className="btn btn-secondary ms-2"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </div>
+    <div className="container my-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2 className="mb-4 text-center p-2 rounded">Manage Payroll</h2>
+        <BackToDashboard />
       </div>
 
-      {/* Modal for details */}
+      <div className="table-responsive">
+        <table className="table table-bordered text-center align-middle">
+          <thead className="table-light">
+            <tr>
+              <th>Batch ID</th>
+              <th>Status</th>
+              <th>Date Created</th>
+              <th>Payments Count</th>
+              <th>Total Amount</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {batches.length === 0 && (
+              <tr><td colSpan="6">No payroll batches found.</td></tr>
+            )}
+            {batches.map((b) => (
+              <tr key={b.id}>
+                <td>{b.id}</td>
+                <td>
+                  <span
+                    className={
+                      "badge " +
+                      (b.status === "Approved"
+                        ? "bg-success"
+                        : b.status === "Rejected"
+                        ? "bg-danger"
+                        : b.status === "Submitted"
+                        ? "bg-warning text-dark"
+                        : "bg-secondary")
+                    }
+                  >
+                    {b.status}
+                  </span>
+                </td>
+                <td>{b.createdAt ? new Date(b.createdAt).toLocaleString() : "-"}</td>
+                <td>{b.payments.length}</td>
+                <td>{calculateTotalAmount(b)} {b.instruction.paymentCurrency}</td>
+                <td className="text-nowrap">
+                  {/* ✅ View button always shown */}
+                  <button
+                    className="btn btn-sm btn-info me-2"
+                    onClick={() => viewDetails(b)}
+                  >
+                    View
+                  </button>
+                  {/* Draft actions */}
+                  {b.status === "Draft" && (
+                    <>
+                      <button
+                        className="btn btn-sm btn-primary me-2"
+                        onClick={() => editBatch(b.id)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-sm btn-success me-2"
+                        onClick={() => submitDraft(b.id)}
+                      >
+                        Submit
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => remove(b.id)}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                  {/* Summary download for approved/rejected */}
+                  {(b.status === "Approved" || b.status === "Rejected") && (
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => downloadSummary(b)}
+                    >
+                      Download Summary
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Details Modal */}
       {selectedBatch && (
         <div
           className="modal fade show"
@@ -167,82 +189,65 @@ export default function ManagePayroll() {
                 <h5 className="modal-title">
                   Batch Details — {selectedBatch.id}
                 </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={closeModal}
-                ></button>
+                <button type="button" className="btn-close" onClick={closeModal}></button>
               </div>
-
-              {/* ✅ Only this section will be printed */}
-              <div className="modal-body" id="printSection">
-                <h5>Batch Details — {selectedBatch.id}</h5>
-
+              <div className="modal-body" id="batch-print-section">
                 <h6>Instruction Details</h6>
                 <ul>
-                  <li>
-                    <strong>Currency:</strong>{" "}
-                    {selectedBatch.instruction.paymentCurrency}
-                  </li>
-                  <li>
-                    <strong>Debit Account:</strong>{" "}
-                    {selectedBatch.instruction.debitAccount}
-                  </li>
-                  <li>
-                    <strong>Date:</strong> {selectedBatch.instruction.date}
-                  </li>
+                  <li><strong>Currency:</strong> {selectedBatch.instruction.paymentCurrency}</li>
+                  <li><strong>Debit Account:</strong> {selectedBatch.instruction.debitAccount}</li>
+                  <li><strong>Date:</strong> {selectedBatch.instruction.date}</li>
                 </ul>
 
                 <h6>Payments</h6>
-                <table className="table table-sm table-bordered">
-                  <thead>
-                    <tr>
-                      <th>Reference</th>
-                      <th>Payee Role</th>
-                      <th>Payee Name</th>
-                      <th>Account Number</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedBatch.payments.map((p, idx) => (
-                      <tr key={idx}>
-                        <td>{p.reference}</td>
-                        <td>{p.payeeDetails}</td>
-                        <td>{p.payeeName}</td>
-                        <td>{p.accountNumber}</td>
-                        <td>
-                          {p.amount} {selectedBatch.instruction.paymentCurrency}
-                        </td>
+                <div className="table-responsive">
+                  <table className="table table-sm table-bordered">
+                    <thead>
+                      <tr>
+                        <th>Reference</th>
+                        <th>Payee Role</th>
+                        <th>Payee Name</th>
+                        <th>Account Number</th>
+                        <th>Amount</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {selectedBatch.payments.map((p, idx) => (
+                        <tr key={idx}>
+                          <td>{p.reference}</td>
+                          <td>{p.payeeDetails}</td>
+                          <td>{p.payeeName}</td>
+                          <td>{p.accountNumber}</td>
+                          <td>
+                            {p.amount} {selectedBatch.instruction.paymentCurrency}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-              {/* Footer (not printed) */}
+                {(selectedBatch.status === "Approved" ||
+                  selectedBatch.status === "Rejected") &&
+                  selectedBatch.meta && (
+                    <>
+                      <h6>Approval</h6>
+                      <ul>
+                        <li><strong>Decision:</strong> {selectedBatch.status}</li>
+                        <li><strong>By:</strong> {selectedBatch.meta.approvedBy || "-"}</li>
+                        <li><strong>At:</strong> {new Date(selectedBatch.meta.approvedAt).toLocaleString()}</li>
+                        {selectedBatch.meta.remarks && (
+                          <li><strong>Remarks:</strong> {selectedBatch.meta.remarks}</li>
+                        )}
+                      </ul>
+                    </>
+                  )}
+              </div>
               <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-outline-primary"
-                  onClick={() => {
-                    const printContent = document.getElementById("printSection").innerHTML;
-                    const printWindow = window.open("", "", "height=600,width=800");
-                    printWindow.document.write("<html><head><title>Payroll Batch</title>");
-                    printWindow.document.write("</head><body>");
-                    printWindow.document.write(printContent);
-                    printWindow.document.write("</body></html>");
-                    printWindow.document.close();
-                    printWindow.print();
-                  }}
-                >
+                <button type="button" className="btn btn-outline-primary" onClick={printBatch}>
                   Print
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={closeModal}
-                >
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>
                   Close
                 </button>
               </div>
