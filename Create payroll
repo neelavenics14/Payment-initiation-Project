@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import PrimaryButton from "../../common/components/PrimaryButton";
 
 const BASE_URL = "http://localhost:8080/api/payroll";
 
-export default function PayrollPayment({ addNewBatch }) {
+export default function PayrollPayment({ addNewBatch, updateBatch, editBatchData }) {
   const [instruction, setInstruction] = useState({
     paymentCurrency: "",
     debitAccount: "",
@@ -21,6 +21,14 @@ export default function PayrollPayment({ addNewBatch }) {
     },
   ]);
 
+  // Load batch if editing
+  useEffect(() => {
+    if (editBatchData) {
+      setInstruction(editBatchData.instruction || {});
+      setPayments(editBatchData.payments || []);
+    }
+  }, [editBatchData]);
+
   const handleInstructionChange = (e) => {
     const { name, value } = e.target;
     setInstruction((prev) => ({ ...prev, [name]: value }));
@@ -30,11 +38,7 @@ export default function PayrollPayment({ addNewBatch }) {
     const { name, value } = e.target;
     setPayments((prev) => {
       const updated = [...prev];
-      if (name === "amount") {
-        updated[index][name] = value.replace(/[^0-9]/g, "");
-      } else {
-        updated[index][name] = value;
-      }
+      updated[index][name] = name === "amount" ? value.replace(/[^0-9]/g, "") : value;
       return updated;
     });
   };
@@ -66,24 +70,31 @@ export default function PayrollPayment({ addNewBatch }) {
     };
 
     try {
-      const res = await axios.post(`${BASE_URL}/batch`, batch);
+      let res;
+      if (editBatchData) {
+        // Update existing
+        res = await axios.put(`${BASE_URL}/batch/${editBatchData.id}`, batch);
+        if (updateBatch) updateBatch(res.data);
+      } else {
+        // Create new
+        res = await axios.post(`${BASE_URL}/batch`, batch);
+        if (addNewBatch) addNewBatch(res.data);
+      }
 
       alert(`Batch ${status} successfully!`);
 
-      // Add newly created batch to ManagePayroll page immediately
-      if (addNewBatch) addNewBatch(res.data);
-
-      // Reset form
-      setInstruction({ paymentCurrency: "", debitAccount: "", date: "" });
-      setPayments([
-        {
-          payeeDetails: "",
-          payeeName: "",
-          accountNumber: "",
-          reference: `REF-${Date.now()}`,
-          amount: "",
-        },
-      ]);
+      if (!editBatchData) {
+        setInstruction({ paymentCurrency: "", debitAccount: "", date: "" });
+        setPayments([
+          {
+            payeeDetails: "",
+            payeeName: "",
+            accountNumber: "",
+            reference: `REF-${Date.now()}`,
+            amount: "",
+          },
+        ]);
+      }
     } catch (error) {
       console.error(error);
       alert("Failed to save batch. Check console for details.");
@@ -92,12 +103,12 @@ export default function PayrollPayment({ addNewBatch }) {
 
   const totalAmount = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  const formatAmountInput = (amount) => (amount ? Number(amount).toLocaleString() : "");
-
   return (
     <div className="container p-2">
       <div className="card p-3">
-        <h2 className="text-center mb-3">Create Payroll Payments</h2>
+        <h2 className="text-center mb-3">
+          {editBatchData ? "Edit Payroll Batch" : "Create Payroll Payments"}
+        </h2>
 
         <form
           onSubmit={(e) => {
@@ -152,7 +163,10 @@ export default function PayrollPayment({ addNewBatch }) {
           </div>
 
           {/* Payment Details */}
-          <h4>Payment Details</h4>
+          <h4 className="d-flex justify-content-between">
+            <span>Payment Details</span>
+          </h4>
+
           <div style={{ maxHeight: "300px", overflowY: "auto", border: "1px solid #ccc", borderRadius: "5px" }}>
             <table className="table table-bordered text-center mb-0">
               <thead className="table-light" style={{ position: "sticky", top: 0, zIndex: 1 }}>
@@ -183,10 +197,12 @@ export default function PayrollPayment({ addNewBatch }) {
                       <input className="form-control form-control-sm" name="accountNumber" value={p.accountNumber} onChange={(e) => handlePaymentChange(i, e)} required />
                     </td>
                     <td>
-                      <input className="form-control form-control-sm text-end" type="text" name="amount" value={formatAmountInput(p.amount)} onChange={(e) => handlePaymentChange(i, e)} required />
+                      <input className="form-control form-control-sm text-end" type="text" name="amount" value={p.amount} onChange={(e) => handlePaymentChange(i, e)} required />
                     </td>
                     <td>
-                      <button type="button" className="btn btn-sm btn-danger" onClick={() => removePaymentRow(i)}>Remove</button>
+                      <button type="button" className="btn btn-sm btn-danger" onClick={() => removePaymentRow(i)}>
+                        Remove
+                      </button>
                     </td>
                   </tr>
                 ))}
