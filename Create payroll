@@ -6,11 +6,11 @@ const BASE_URL = "http://localhost:8080/api/payroll";
 
 export default function PayrollPayment() {
   const [instruction, setInstruction] = useState({
-    paymentCurrency: "INR",
-    debitAccount: "Corporate INR",
+    paymentCurrency: "",
+    debitAccount: "",
     date: "",
   });
-  const [payments, setPayments] = useState([]);
+
   const [payment, setPayment] = useState({
     payeeDetails: "",
     payeeName: "",
@@ -18,56 +18,32 @@ export default function PayrollPayment() {
     reference: "",
     amount: "",
   });
-  const [status, setStatus] = useState("Draft");
+
   const navigate = useNavigate();
 
-  // 🔹 handle change in instruction form
   const handleInstructionChange = (e) => {
     setInstruction({ ...instruction, [e.target.name]: e.target.value });
   };
 
-  // 🔹 handle change in payments form
   const handlePaymentChange = (e) => {
     setPayment({ ...payment, [e.target.name]: e.target.value });
   };
 
-  // 🔹 add one payment row
-  const addPayment = () => {
-    if (payment.payeeName && payment.amount) {
-      setPayments([...payments, payment]);
-      setPayment({
-        payeeDetails: "",
-        payeeName: "",
-        accountNumber: "",
-        reference: "",
-        amount: "",
-      });
-    } else {
-      alert("Payee Name and Amount are required.");
-    }
-  };
-
-  // 🔹 remove a payment
-  const removePayment = (index) => {
-    const newPayments = [...payments];
-    newPayments.splice(index, 1);
-    setPayments(newPayments);
-  };
-
-  // 🔹 submit batch to backend
-  const submitBatch = async () => {
-    const batch = {
-      instruction,
-      payments,
-      status,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
+      const batch = {
+        instruction,
+        payments: [payment],
+        status: "Draft",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
       await axios.post(`${BASE_URL}/batch`, batch);
+
       alert("Batch saved successfully!");
-      navigate("/manage-payroll"); // redirect to ManagePayroll after saving
+      navigate("/manage-payroll"); // redirect to ManagePayroll page
     } catch (err) {
       console.error("Failed to save batch", err);
       alert("Failed to save batch. Check console for details.");
@@ -76,134 +52,83 @@ export default function PayrollPayment() {
 
   return (
     <div className="container mt-3">
-      <div className="card shadow-sm">
-        <div className="card-header">
-          <h3>Create Payroll Batch</h3>
+      <h2>Create Payroll</h2>
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label>Payment Currency</label>
+          <input
+            type="text"
+            name="paymentCurrency"
+            value={instruction.paymentCurrency}
+            onChange={handleInstructionChange}
+          />
         </div>
-        <div className="card-body">
-          {/* Instruction Section */}
-          <h5>Instruction</h5>
-          <div className="row mb-2">
-            <div className="col-md-4">
-              <label>Currency</label>
-              <input
-                name="paymentCurrency"
-                value={instruction.paymentCurrency}
-                onChange={handleInstructionChange}
-                className="form-control"
-              />
-            </div>
-            <div className="col-md-4">
-              <label>Debit Account</label>
-              <input
-                name="debitAccount"
-                value={instruction.debitAccount}
-                onChange={handleInstructionChange}
-                className="form-control"
-              />
-            </div>
-            <div className="col-md-4">
-              <label>Date</label>
-              <input
-                type="date"
-                name="date"
-                value={instruction.date}
-                onChange={handleInstructionChange}
-                className="form-control"
-              />
-            </div>
-          </div>
-
-          {/* Payments Section */}
-          <h5>Payments</h5>
-          <div className="row mb-2">
-            <div className="col-md-3">
-              <input
-                placeholder="Payee Name"
-                name="payeeName"
-                value={payment.payeeName}
-                onChange={handlePaymentChange}
-                className="form-control"
-              />
-            </div>
-            <div className="col-md-2">
-              <input
-                placeholder="Payee Details"
-                name="payeeDetails"
-                value={payment.payeeDetails}
-                onChange={handlePaymentChange}
-                className="form-control"
-              />
-            </div>
-            <div className="col-md-2">
-              <input
-                placeholder="Account Number"
-                name="accountNumber"
-                value={payment.accountNumber}
-                onChange={handlePaymentChange}
-                className="form-control"
-              />
-            </div>
-            <div className="col-md-2">
-              <input
-                placeholder="Reference"
-                name="reference"
-                value={payment.reference}
-                onChange={handlePaymentChange}
-                className="form-control"
-              />
-            </div>
-            <div className="col-md-2">
-              <input
-                placeholder="Amount"
-                name="amount"
-                value={payment.amount}
-                onChange={handlePaymentChange}
-                className="form-control"
-              />
-            </div>
-            <div className="col-md-1">
-              <button onClick={addPayment} className="btn btn-success">
-                +
-              </button>
-            </div>
-          </div>
-
-          <ul className="list-group mb-3">
-            {payments.map((p, i) => (
-              <li
-                key={i}
-                className="list-group-item d-flex justify-content-between"
-              >
-                {p.payeeName} - {p.amount}
-                <button
-                  onClick={() => removePayment(i)}
-                  className="btn btn-danger btn-sm"
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          {/* Status */}
-          <div className="mb-3">
-            <label>Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="form-select"
-            >
-              <option value="Draft">Draft</option>
-              <option value="Submitted">Submitted</option>
-            </select>
-          </div>
-
-          <button onClick={submitBatch} className="btn btn-primary">
-            Save Payroll Batch
-          </button>
+        <div>
+          <label>Debit Account</label>
+          <input
+            type="text"
+            name="debitAccount"
+            value={instruction.debitAccount}
+            onChange={handleInstructionChange}
+          />
         </div>
-      </div>
+        <div>
+          <label>Date</label>
+          <input
+            type="date"
+            name="date"
+            value={instruction.date}
+            onChange={handleInstructionChange}
+          />
+        </div>
+        <hr />
+        <div>
+          <label>Payee Details</label>
+          <input
+            type="text"
+            name="payeeDetails"
+            value={payment.payeeDetails}
+            onChange={handlePaymentChange}
+          />
+        </div>
+        <div>
+          <label>Payee Name</label>
+          <input
+            type="text"
+            name="payeeName"
+            value={payment.payeeName}
+            onChange={handlePaymentChange}
+          />
+        </div>
+        <div>
+          <label>Account Number</label>
+          <input
+            type="text"
+            name="accountNumber"
+            value={payment.accountNumber}
+            onChange={handlePaymentChange}
+          />
+        </div>
+        <div>
+          <label>Reference</label>
+          <input
+            type="text"
+            name="reference"
+            value={payment.reference}
+            onChange={handlePaymentChange}
+          />
+        </div>
+        <div>
+          <label>Amount</label>
+          <input
+            type="number"
+            name="amount"
+            value={payment.amount}
+            onChange={handlePaymentChange}
+          />
+        </div>
+        <button type="submit">Submit Payroll</button>
+      </form>
     </div>
   );
 }
