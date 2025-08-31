@@ -1,13 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 import PrimaryButton from "../../common/components/PrimaryButton";
 
-const BASE_URL = "http://localhost:8080/api/payroll"; // Spring Boot backend URL
+const BASE_URL = "http://localhost:8080/api/payroll";
 
-export default function PayrollPayment() {
-  const navigate = useNavigate();
-
+export default function PayrollPayment({ addNewBatch, editBatchData }) {
   const [instruction, setInstruction] = useState({
     paymentCurrency: "",
     debitAccount: "",
@@ -23,6 +20,14 @@ export default function PayrollPayment() {
       amount: "",
     },
   ]);
+
+  // If editing, load existing batch
+  useEffect(() => {
+    if (editBatchData) {
+      setInstruction(editBatchData.instruction || {});
+      setPayments(editBatchData.payments || []);
+    }
+  }, [editBatchData]);
 
   const handleInstructionChange = (e) => {
     const { name, value } = e.target;
@@ -61,7 +66,6 @@ export default function PayrollPayment() {
 
   const saveBatch = async (status) => {
     const batch = {
-      id: Date.now(),
       instruction,
       payments,
       status,
@@ -70,12 +74,27 @@ export default function PayrollPayment() {
     };
 
     try {
-      await axios.post(`${BASE_URL}/batch`, batch);
+      let res;
+      if (editBatchData) {
+        // Edit existing batch
+        res = await axios.put(`${BASE_URL}/batch/${editBatchData.id}`, batch);
+      } else {
+        // Create new batch
+        res = await axios.post(`${BASE_URL}/batch`, batch);
+      }
+
       alert(`Batch ${status} successfully!`);
 
-      // Redirect to ManagePayroll and pass the new batch immediately
-      navigate("/manage-payroll", { state: { newBatch: batch } });
+      // Call callback to update ManagePayroll
+      if (addNewBatch) addNewBatch(res.data);
 
+      // Reset form if creating new batch
+      if (!editBatchData) {
+        setInstruction({ paymentCurrency: "", debitAccount: "", date: "" });
+        setPayments([
+          { payeeDetails: "", payeeName: "", accountNumber: "", reference: `REF-${Date.now()}`, amount: "" },
+        ]);
+      }
     } catch (error) {
       console.error(error);
       alert("Failed to save batch. Check console for details.");
@@ -87,26 +106,12 @@ export default function PayrollPayment() {
     0
   );
 
-  const formatAmount = (amount) => {
-    if (!instruction.paymentCurrency) return amount.toLocaleString();
-    if (instruction.paymentCurrency === "INR")
-      return `${Number(amount).toLocaleString("en-IN")} INR`;
-    if (instruction.paymentCurrency === "USD")
-      return `${Number(amount).toLocaleString("en-US")} USD`;
-    return amount.toLocaleString();
-  };
-
-  const formatAmountInput = (amount) => {
-    if (!amount) return "";
-    if (instruction.paymentCurrency === "INR") return Number(amount).toLocaleString("en-IN");
-    if (instruction.paymentCurrency === "USD") return Number(amount).toLocaleString("en-US");
-    return Number(amount).toLocaleString();
-  };
+  const formatAmountInput = (amount) => (amount ? Number(amount).toLocaleString() : "");
 
   return (
     <div className="container p-2">
       <div className="card p-3">
-        <h2 className="text-center mb-3">Create Payroll Payments</h2>
+        <h2 className="text-center mb-3">{editBatchData ? "Edit Payroll Batch" : "Create Payroll Payments"}</h2>
 
         <form
           onSubmit={(e) => {
@@ -194,9 +199,9 @@ export default function PayrollPayment() {
             </table>
           </div>
 
-          {/* Total Amount Sticky Bar */}
-          <div style={{ position: "sticky", bottom: 0, background: "#0055a4", color: "white", borderTop: "1px solid #444", padding: "8px 12px", fontSize: "0.95rem", textAlign: "right", zIndex: 10 }}>
-            <strong>Total Amount: {formatAmount(totalAmount)}</strong>
+          {/* Total Amount */}
+          <div style={{ textAlign: "right", marginTop: "5px" }}>
+            <strong>Total Amount: {totalAmount.toLocaleString()}</strong>
           </div>
 
           {/* Buttons */}
