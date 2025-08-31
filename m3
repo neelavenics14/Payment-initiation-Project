@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import BackToDashboard from "../../common/components/BackToDashboard";
 
@@ -11,6 +11,7 @@ export default function ManagePayroll() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch all batches from backend
   const fetchBatches = async () => {
@@ -22,20 +23,20 @@ export default function ManagePayroll() {
     }
   };
 
+  // Add new batch from redirected state
   useEffect(() => {
     fetchBatches();
-  }, []);
+    if (location.state && location.state.newBatch) {
+      setBatches((prev) => [location.state.newBatch, ...prev]);
+    }
+  }, [location.state]);
 
-  // This function ensures newly created batches are shown immediately
-  useEffect(() => {
-    const interval = setInterval(fetchBatches, 2000); // check every 2 seconds
-    return () => clearInterval(interval);
-  }, []);
-
+  // Edit a batch → redirect to PayrollPayment.js
   const editBatch = (batchId) => {
     navigate("/payroll", { state: { batchId } });
   };
 
+  // Submit a draft batch
   const submitDraft = async (batchId) => {
     try {
       const batch = batches.find((b) => b.id === batchId);
@@ -51,6 +52,7 @@ export default function ManagePayroll() {
     }
   };
 
+  // Delete a batch
   const remove = async (batchId) => {
     try {
       await axios.delete(`${BASE_URL}/batch/${batchId}`);
@@ -60,22 +62,19 @@ export default function ManagePayroll() {
     }
   };
 
+  // View batch details (modal)
   const viewDetails = (batch) => setSelectedBatch(batch);
   const closeModal = () => setSelectedBatch(null);
 
-  const calculateTotalAmount = (batch) => {
-    return (batch.payments || []).reduce(
-      (sum, p) => sum + Number(p.amount || 0),
-      0
-    );
-  };
+  // Calculate total amount for a batch
+  const calculateTotalAmount = (batch) =>
+    (batch.payments || []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
+  // Download summary as .txt file
   const downloadSummary = (batch) => {
     if (!batch) return;
-
     const instruction = batch.instruction || {};
     const payments = batch.payments || [];
-
     const lines = [
       `Payroll Batch Summary - ${batch.id || "-"}`,
       `Status: ${batch.status || "-"}`,
@@ -91,7 +90,6 @@ export default function ManagePayroll() {
           `${i + 1}. ${p.payeeName || "-"} | ${p.payeeDetails || "-"} | ${p.accountNumber || "-"} | ${p.amount || "0"} ${instruction.paymentCurrency || ""} | Ref: ${p.reference || "-"}`
       ),
     ];
-
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -99,6 +97,7 @@ export default function ManagePayroll() {
     link.click();
   };
 
+  // Print batch details
   const printBatch = () => {
     if (!selectedBatch) return;
     const html = document.getElementById("batch-print-section").innerHTML;
@@ -132,6 +131,7 @@ export default function ManagePayroll() {
     w.print();
   };
 
+  // Pagination logic
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
   const currentBatches = batches.slice(indexOfFirst, indexOfLast);
@@ -161,7 +161,9 @@ export default function ManagePayroll() {
               </thead>
               <tbody>
                 {currentBatches.length === 0 && (
-                  <tr><td colSpan="7">No payroll batches found.</td></tr>
+                  <tr>
+                    <td colSpan="7">No payroll batches found.</td>
+                  </tr>
                 )}
                 {currentBatches.map((b, idx) => (
                   <tr key={b.id}>
@@ -172,19 +174,30 @@ export default function ManagePayroll() {
                     <td>{calculateTotalAmount(b)} {b.instruction.paymentCurrency}</td>
                     <td>
                       <span className={
-                        "badge " + (b.status === "Approved" ? "bg-success" : b.status === "Rejected" ? "bg-danger" : b.status === "Submitted" ? "bg-warning text-dark" : "bg-secondary")
-                      }>{b.status}</span>
+                        "badge " +
+                        (b.status === "Approved"
+                          ? "bg-success"
+                          : b.status === "Rejected"
+                          ? "bg-danger"
+                          : b.status === "Submitted"
+                          ? "bg-warning text-dark"
+                          : "bg-secondary")
+                      }>
+                        {b.status}
+                      </span>
                     </td>
                     <td className="text-nowrap">
                       <button className="btn btn-sm btn-info me-2" onClick={() => viewDetails(b)}>View</button>
-                      {b.status === "Draft" && <>
-                        <button className="btn btn-sm btn-primary me-2" onClick={() => editBatch(b.id)}>Edit</button>
-                        <button className="btn btn-sm btn-success me-2" onClick={() => submitDraft(b.id)}>Submit</button>
-                        <button className="btn btn-sm btn-outline-danger" onClick={() => remove(b.id)}>Delete</button>
-                      </>}
-                      {(b.status === "Approved" || b.status === "Rejected") &&
+                      {b.status === "Draft" && (
+                        <>
+                          <button className="btn btn-sm btn-primary me-2" onClick={() => editBatch(b.id)}>Edit</button>
+                          <button className="btn btn-sm btn-success me-2" onClick={() => submitDraft(b.id)}>Submit</button>
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => remove(b.id)}>Delete</button>
+                        </>
+                      )}
+                      {(b.status === "Approved" || b.status === "Rejected") && (
                         <button className="btn btn-sm btn-outline-primary" onClick={() => downloadSummary(b)}>Download Summary</button>
-                      }
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -194,14 +207,15 @@ export default function ManagePayroll() {
 
           {totalPages > 0 && (
             <div className="d-flex justify-content-center mt-3">
-              <button className="btn btn-secondary me-2" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>Prev</button>
+              <button className="btn btn-secondary me-2" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Prev</button>
               <span className="align-self-center">Page {currentPage} of {totalPages}</span>
-              <button className="btn btn-secondary ms-2" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>Next</button>
+              <button className="btn btn-secondary ms-2" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
             </div>
           )}
         </div>
       </div>
 
+      {/* Details Modal */}
       {selectedBatch && (
         <div className="modal fade show" style={{ display: "block", background: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-lg">
@@ -245,6 +259,18 @@ export default function ManagePayroll() {
                     </tbody>
                   </table>
                 </div>
+
+                {(selectedBatch.status === "Approved" || selectedBatch.status === "Rejected") && selectedBatch.meta && (
+                  <>
+                    <h6>Approval</h6>
+                    <ul>
+                      <li><strong>Decision:</strong> {selectedBatch.status}</li>
+                      <li><strong>By:</strong> {selectedBatch.meta.approvedBy || "-"}</li>
+                      <li><strong>At:</strong> {new Date(selectedBatch.meta.approvedAt).toLocaleString()}</li>
+                      {selectedBatch.meta.remarks && <li><strong>Remarks:</strong> {selectedBatch.meta.remarks}</li>}
+                    </ul>
+                  </>
+                )}
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline-primary" onClick={printBatch}>Print</button>
@@ -257,4 +283,3 @@ export default function ManagePayroll() {
     </div>
   );
 }
-
