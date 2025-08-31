@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import BackToDashboard from "../../common/components/BackToDashboard";
-import PayrollPayment from "./PayrollPayment";
 
 const BASE_URL = "http://localhost:8080/api/payroll";
 
@@ -13,7 +12,6 @@ export default function ManagePayroll() {
   const itemsPerPage = 6;
   const navigate = useNavigate();
 
-  // Fetch all batches from DB
   const fetchBatches = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/batch`);
@@ -27,18 +25,8 @@ export default function ManagePayroll() {
     fetchBatches();
   }, []);
 
-  // Add new batch immediately after creation
-  const addNewBatch = (batch) => {
-    setBatches((prev) => [batch, ...prev]);
-  };
-
-  // Update existing batch immediately after editing
-  const updateBatch = (batch) => {
-    setBatches((prev) => prev.map((b) => (b.id === batch.id ? batch : b)));
-  };
-
-  const editBatch = (batchId) => {
-    navigate("/payroll", { state: { batchId } });
+  const editBatch = (batch) => {
+    navigate("/payroll", { state: { batchData: batch } });
   };
 
   const submitDraft = async (batchId) => {
@@ -78,10 +66,7 @@ export default function ManagePayroll() {
 
   return (
     <div className="container-fluid p-0">
-      {/* Payroll Payment Form */}
-      <PayrollPayment addNewBatch={addNewBatch} updateBatch={updateBatch} />
-
-      <div className="card mt-3">
+      <div className="card">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h2>Manage Payroll</h2>
           <BackToDashboard />
@@ -111,43 +96,17 @@ export default function ManagePayroll() {
                   <tr key={b.id}>
                     <td>{indexOfFirst + idx + 1}</td>
                     <td>{b.id}</td>
-                    <td>
-                      {b.createdAt
-                        ? new Date(b.createdAt).toLocaleString()
-                        : "-"}
-                    </td>
+                    <td>{b.createdAt ? new Date(b.createdAt).toLocaleString() : "-"}</td>
                     <td>{b.payments.length}</td>
-                    <td>
-                      {calculateTotalAmount(b)} {b.instruction?.paymentCurrency}
-                    </td>
+                    <td>{calculateTotalAmount(b)} {b.instruction?.paymentCurrency}</td>
                     <td>{b.status}</td>
                     <td>
-                      <button
-                        className="btn btn-sm btn-info me-2"
-                        onClick={() => viewDetails(b)}
-                      >
-                        View
-                      </button>
+                      <button className="btn btn-sm btn-info me-2" onClick={() => viewDetails(b)}>View</button>
                       {b.status === "Draft" && (
                         <>
-                          <button
-                            className="btn btn-sm btn-primary me-2"
-                            onClick={() => editBatch(b.id)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-sm btn-success me-2"
-                            onClick={() => submitDraft(b.id)}
-                          >
-                            Submit
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => remove(b.id)}
-                          >
-                            Delete
-                          </button>
+                          <button className="btn btn-sm btn-primary me-2" onClick={() => editBatch(b)}>Edit</button>
+                          <button className="btn btn-sm btn-success me-2" onClick={() => submitDraft(b.id)}>Submit</button>
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => remove(b.id)}>Delete</button>
                         </>
                       )}
                     </td>
@@ -160,23 +119,9 @@ export default function ManagePayroll() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="d-flex justify-content-center mt-3">
-              <button
-                className="btn btn-secondary me-2"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-              >
-                Prev
-              </button>
-              <span className="align-self-center">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                className="btn btn-secondary ms-2"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
-                Next
-              </button>
+              <button className="btn btn-secondary me-2" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>Prev</button>
+              <span className="align-self-center">Page {currentPage} of {totalPages}</span>
+              <button className="btn btn-secondary ms-2" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>Next</button>
             </div>
           )}
         </div>
@@ -184,36 +129,19 @@ export default function ManagePayroll() {
 
       {/* Batch Details Modal */}
       {selectedBatch && (
-        <div
-          className="modal fade show"
-          style={{ display: "block", background: "rgba(0,0,0,0.5)" }}
-        >
+        <div className="modal fade show" style={{ display: "block", background: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">
-                  Batch Details — {selectedBatch.id}
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={closeModal}
-                ></button>
+                <h5 className="modal-title">Batch Details — {selectedBatch.id}</h5>
+                <button type="button" className="btn-close" onClick={closeModal}></button>
               </div>
               <div className="modal-body">
                 <h6>Instruction Details</h6>
                 <ul>
-                  <li>
-                    <strong>Currency:</strong>{" "}
-                    {selectedBatch.instruction.paymentCurrency}
-                  </li>
-                  <li>
-                    <strong>Debit Account:</strong>{" "}
-                    {selectedBatch.instruction.debitAccount}
-                  </li>
-                  <li>
-                    <strong>Date:</strong> {selectedBatch.instruction.date}
-                  </li>
+                  <li><strong>Currency:</strong> {selectedBatch.instruction.paymentCurrency}</li>
+                  <li><strong>Debit Account:</strong> {selectedBatch.instruction.debitAccount}</li>
+                  <li><strong>Date:</strong> {selectedBatch.instruction.date}</li>
                 </ul>
 
                 <h6>Payments</h6>
@@ -237,10 +165,7 @@ export default function ManagePayroll() {
                           <td>{p.payeeDetails}</td>
                           <td>{p.payeeName}</td>
                           <td>{p.accountNumber}</td>
-                          <td>
-                            {p.amount}{" "}
-                            {selectedBatch.instruction.paymentCurrency}
-                          </td>
+                          <td>{p.amount} {selectedBatch.instruction.paymentCurrency}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -248,13 +173,7 @@ export default function ManagePayroll() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={closeModal}
-                >
-                  Close
-                </button>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Close</button>
               </div>
             </div>
           </div>
