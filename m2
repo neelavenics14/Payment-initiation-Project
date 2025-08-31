@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import BackToDashboard from "../../common/components/BackToDashboard";
 
-const BASE_URL = "http://localhost:8080/api/payroll";
+const BASE_URL = "http://localhost:8080/api/payroll"; // Spring Boot backend
 
 export default function ManagePayroll() {
   const [batches, setBatches] = useState([]);
@@ -12,49 +12,56 @@ export default function ManagePayroll() {
   const itemsPerPage = 6; // show 6 per page
   const navigate = useNavigate();
 
-  // Load batches from backend
-  useEffect(() => {
-    fetchBatches();
-  }, []);
-
+  // Fetch all batches from backend
   const fetchBatches = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/batches`);
       setBatches(res.data);
     } catch (err) {
-      console.error(err);
-      setBatches([]);
+      console.error("Failed to load batches", err);
     }
   };
 
-  const refresh = () => fetchBatches();
+  useEffect(() => {
+    fetchBatches();
+  }, []);
 
-  const editBatch = (batchId) => navigate(`/edit-payroll/${batchId}`);
+  // Edit a batch → redirect to PayrollPayment.js
+  const editBatch = (batchId) => {
+    navigate("/payroll", { state: { batchId } });
+  };
 
+  // Submit a draft batch
   const submitDraft = async (batchId) => {
     try {
-      await axios.put(`${BASE_URL}/batch/${batchId}/status`, {
+      const batch = batches.find((b) => b.id === batchId);
+      const updated = {
+        ...batch,
         status: "Submitted",
         updatedAt: new Date().toISOString(),
-      });
+      };
+      await axios.put(`${BASE_URL}/batch/${batchId}`, updated);
       fetchBatches();
     } catch (err) {
-      console.error(err);
+      console.error("Failed to submit draft", err);
     }
   };
 
+  // Delete a batch
   const remove = async (batchId) => {
     try {
       await axios.delete(`${BASE_URL}/batch/${batchId}`);
       fetchBatches();
     } catch (err) {
-      console.error(err);
+      console.error("Failed to delete batch", err);
     }
   };
 
+  // View batch details (modal)
   const viewDetails = (batch) => setSelectedBatch(batch);
   const closeModal = () => setSelectedBatch(null);
 
+  // Calculate total amount for a batch
   const calculateTotalAmount = (batch) => {
     return (batch.payments || []).reduce(
       (sum, p) => sum + Number(p.amount || 0),
@@ -62,16 +69,7 @@ export default function ManagePayroll() {
     );
   };
 
-  // Helper for download text file
-  const downloadText = (filename, text) => {
-    const element = document.createElement("a");
-    const file = new Blob([text], { type: "text/plain" });
-    element.href = URL.createObjectURL(file);
-    element.download = filename;
-    document.body.appendChild(element);
-    element.click();
-  };
-
+  // Download summary as .txt file
   const downloadSummary = (batch) => {
     if (!batch) return;
 
@@ -96,18 +94,20 @@ export default function ManagePayroll() {
         (p, i) =>
           `${i + 1}. ${p.payeeName || "-"} | ${p.payeeDetails || "-"} | ${
             p.accountNumber || "-"
-          } | ${p.amount || "0"} ${instruction.paymentCurrency || ""} | Ref: ${
-            p.reference || "-"
-          }`
+          } | ${p.amount || "0"} ${
+            instruction.paymentCurrency || ""
+          } | Ref: ${p.reference || "-"}`
       ),
     ];
 
-    downloadText(
-      `Payroll_${batch.id || "Unknown"}_Summary.txt`,
-      lines.join("\n")
-    );
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Payroll_${batch.id || "Unknown"}_Summary.txt`;
+    link.click();
   };
 
+  // Print batch details
   const printBatch = () => {
     if (!selectedBatch) return;
     const html = document.getElementById("batch-print-section").innerHTML;
@@ -233,7 +233,8 @@ export default function ManagePayroll() {
                           </button>
                         </>
                       )}
-                      {(b.status === "Approved" || b.status === "Rejected") && (
+                      {(b.status === "Approved" ||
+                        b.status === "Rejected") && (
                         <button
                           className="btn btn-sm btn-outline-primary"
                           onClick={() => downloadSummary(b)}
