@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import PrimaryButton from "../../common/components/PrimaryButton";
 
 const BASE_URL = "http://localhost:8080/api/payroll";
 
 export default function PayrollPayment() {
+  const navigate = useNavigate();
+
   const [instruction, setInstruction] = useState({
     paymentCurrency: "",
     debitAccount: "",
@@ -22,18 +24,6 @@ export default function PayrollPayment() {
     },
   ]);
 
-  const navigate = useNavigate();
-  const location = useLocation();
-  const editBatchData = location.state?.batchData || null;
-
-  // If editing, load existing batch data
-  useEffect(() => {
-    if (editBatchData) {
-      setInstruction(editBatchData.instruction || {});
-      setPayments(editBatchData.payments || []);
-    }
-  }, [editBatchData]);
-
   const handleInstructionChange = (e) => {
     const { name, value } = e.target;
     setInstruction((prev) => ({ ...prev, [name]: value }));
@@ -43,7 +33,7 @@ export default function PayrollPayment() {
     const { name, value } = e.target;
     setPayments((prev) => {
       const updated = [...prev];
-      updated[index][name] = name === "amount" ? value.replace(/[^0-9]/g, "") : value;
+      updated[index][name] = value;
       return updated;
     });
   };
@@ -70,22 +60,14 @@ export default function PayrollPayment() {
       instruction,
       payments,
       status,
-      createdAt: editBatchData?.createdAt || new Date().toISOString(),
+      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      id: editBatchData?.id, // only for editing
     };
 
     try {
-      if (editBatchData) {
-        await axios.put(`${BASE_URL}/batch/${editBatchData.id}`, batch);
-      } else {
-        await axios.post(`${BASE_URL}/batch`, batch);
-      }
-
+      await axios.post(`${BASE_URL}/batch`, batch);
       alert(`Batch ${status} successfully!`);
-
-      // Redirect to Manage Payroll page after save
-      navigate("/manage-payroll");
+      navigate("/managepayroll"); // go back to ManagePayroll
     } catch (error) {
       console.error(error);
       alert("Failed to save batch. Check console for details.");
@@ -100,9 +82,7 @@ export default function PayrollPayment() {
   return (
     <div className="container p-2">
       <div className="card p-3">
-        <h2 className="text-center mb-3">
-          {editBatchData ? "Edit Payroll Batch" : "Create Payroll Payments"}
-        </h2>
+        <h2 className="text-center mb-3">Create Payroll Payments</h2>
 
         <form
           onSubmit={(e) => {
@@ -158,43 +138,103 @@ export default function PayrollPayment() {
 
           {/* Payment Details */}
           <h4>Payment Details</h4>
-          <div style={{ maxHeight: "300px", overflowY: "auto", border: "1px solid #ccc", borderRadius: "5px" }}>
-            <table className="table table-bordered text-center mb-0">
-              <thead className="table-light">
-                <tr>
-                  <th>S. No.</th>
-                  <th>Reference</th>
-                  <th>Payee Role</th>
-                  <th>Payee Name</th>
-                  <th>Account Number</th>
-                  <th>Amount</th>
-                  <th>Action</th>
+          <table className="table table-bordered text-center mb-0">
+            <thead className="table-light">
+              <tr>
+                <th>S. No.</th>
+                <th>Reference</th>
+                <th>Payee Role</th>
+                <th>Payee Name</th>
+                <th>Account Number</th>
+                <th>Amount</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((p, i) => (
+                <tr key={i}>
+                  <td>{i + 1}</td>
+                  <td>
+                    <input
+                      className="form-control form-control-sm"
+                      name="reference"
+                      value={p.reference}
+                      readOnly
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="form-control form-control-sm"
+                      name="payeeDetails"
+                      value={p.payeeDetails}
+                      onChange={(e) => handlePaymentChange(i, e)}
+                      required
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="form-control form-control-sm"
+                      name="payeeName"
+                      value={p.payeeName}
+                      onChange={(e) => handlePaymentChange(i, e)}
+                      required
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="form-control form-control-sm"
+                      name="accountNumber"
+                      value={p.accountNumber}
+                      onChange={(e) => handlePaymentChange(i, e)}
+                      required
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="form-control form-control-sm"
+                      type="number"
+                      name="amount"
+                      value={p.amount}
+                      onChange={(e) => handlePaymentChange(i, e)}
+                      required
+                    />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      onClick={() => removePaymentRow(i)}
+                    >
+                      Remove
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {payments.map((p, i) => (
-                  <tr key={i}>
-                    <td>{i + 1}</td>
-                    <td><input className="form-control form-control-sm" name="reference" value={p.reference} readOnly /></td>
-                    <td><input className="form-control form-control-sm" name="payeeDetails" value={p.payeeDetails} onChange={(e) => handlePaymentChange(i, e)} required /></td>
-                    <td><input className="form-control form-control-sm" name="payeeName" value={p.payeeName} onChange={(e) => handlePaymentChange(i, e)} required /></td>
-                    <td><input className="form-control form-control-sm" name="accountNumber" value={p.accountNumber} onChange={(e) => handlePaymentChange(i, e)} required /></td>
-                    <td><input className="form-control form-control-sm text-end" name="amount" value={p.amount} onChange={(e) => handlePaymentChange(i, e)} required /></td>
-                    <td><button type="button" className="btn btn-sm btn-danger" onClick={() => removePaymentRow(i)}>Remove</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Total Amount */}
+          <div style={{ textAlign: "right", marginTop: "10px" }}>
+            <strong>Total Amount: {totalAmount}</strong>
           </div>
 
-          <div className="text-end mt-2">
-            <strong>Total Amount: {totalAmount.toLocaleString()}</strong>
-          </div>
-
-          <div className="d-flex justify-content-between mt-3">
-            <button type="button" className="btn btn-outline-secondary" onClick={addPaymentRow}>+ Add Payment</button>
+          {/* Buttons */}
+          <div className="d-flex justify-content-between align-items-center my-2">
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={addPaymentRow}
+            >
+              + Add Payment Row
+            </button>
             <div className="d-flex gap-2">
-              <button type="button" className="btn btn-outline-secondary" onClick={() => saveBatch("Draft")}>Save Draft</button>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => saveBatch("Draft")}
+              >
+                Save as Draft
+              </button>
               <PrimaryButton type="submit">Submit</PrimaryButton>
             </div>
           </div>
