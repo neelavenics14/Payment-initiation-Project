@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import BackToDashboard from "../../common/components/BackToDashboard";
+import PayrollPayment from "./PayrollPayment"; // import your PayrollPayment component
 
 const BASE_URL = "http://localhost:8080/api/payroll";
 
@@ -12,6 +13,7 @@ export default function ManagePayroll() {
   const itemsPerPage = 6;
   const navigate = useNavigate();
 
+  // Fetch all batches from backend
   const fetchBatches = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/batches`);
@@ -24,6 +26,11 @@ export default function ManagePayroll() {
   useEffect(() => {
     fetchBatches();
   }, []);
+
+  // Add newly created batch immediately
+  const addNewBatch = (batch) => {
+    setBatches((prev) => [batch, ...prev]);
+  };
 
   const editBatch = (batchId) => {
     navigate("/payroll", { state: { batchId } });
@@ -66,7 +73,11 @@ export default function ManagePayroll() {
 
   return (
     <div className="container-fluid p-0">
-      <div className="card">
+      {/* Payroll Payment Component */}
+      <PayrollPayment addNewBatch={addNewBatch} />
+
+      {/* Batches Table */}
+      <div className="card mt-3">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h2>Manage Payroll</h2>
           <BackToDashboard />
@@ -100,7 +111,7 @@ export default function ManagePayroll() {
                     <td>{b.payments.length}</td>
                     <td>{calculateTotalAmount(b)} {b.instruction?.paymentCurrency}</td>
                     <td>{b.status}</td>
-                    <td>
+                    <td className="text-nowrap">
                       <button className="btn btn-sm btn-info me-2" onClick={() => viewDetails(b)}>View</button>
                       {b.status === "Draft" && (
                         <>
@@ -139,9 +150,9 @@ export default function ManagePayroll() {
               <div className="modal-body">
                 <h6>Instruction Details</h6>
                 <ul>
-                  <li><strong>Currency:</strong> {selectedBatch.instruction.paymentCurrency}</li>
-                  <li><strong>Debit Account:</strong> {selectedBatch.instruction.debitAccount}</li>
-                  <li><strong>Date:</strong> {selectedBatch.instruction.date}</li>
+                  <li><strong>Currency:</strong> {selectedBatch.instruction?.paymentCurrency}</li>
+                  <li><strong>Debit Account:</strong> {selectedBatch.instruction?.debitAccount}</li>
+                  <li><strong>Date:</strong> {selectedBatch.instruction?.date}</li>
                 </ul>
 
                 <h6>Payments</h6>
@@ -165,7 +176,7 @@ export default function ManagePayroll() {
                           <td>{p.payeeDetails}</td>
                           <td>{p.payeeName}</td>
                           <td>{p.accountNumber}</td>
-                          <td>{p.amount} {selectedBatch.instruction.paymentCurrency}</td>
+                          <td>{p.amount} {selectedBatch.instruction?.paymentCurrency}</td>
                         </tr>
                       ))}
                     </tbody>
