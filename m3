@@ -12,7 +12,6 @@ export default function ManagePayroll() {
   const itemsPerPage = 6;
   const navigate = useNavigate();
 
-  // 🔹 Fetch all batches
   const fetchBatches = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/batch`);
@@ -26,43 +25,38 @@ export default function ManagePayroll() {
     fetchBatches();
   }, []);
 
-  // 🔹 Edit batch → go to create payroll page with batchId
   const editBatch = (batchId) => {
     navigate("/payroll", { state: { batchId } });
   };
 
-  // 🔹 Submit draft batch
   const submitDraft = async (batchId) => {
     try {
       const batch = batches.find((b) => b.id === batchId);
-      await axios.put(`${BASE_URL}/batch/${batchId}`, {
+      await axios.post(`${BASE_URL}/batch`, {
         ...batch,
         status: "Submitted",
         updatedAt: new Date().toISOString(),
       });
       fetchBatches();
     } catch (err) {
-      console.error("Submit failed", err);
+      console.error(err);
     }
   };
 
-  // 🔹 Delete batch
   const remove = async (batchId) => {
     try {
       await axios.delete(`${BASE_URL}/batch/${batchId}`);
       fetchBatches();
     } catch (err) {
-      console.error("Delete failed", err);
+      console.error(err);
     }
   };
 
   const viewDetails = (batch) => setSelectedBatch(batch);
   const closeModal = () => setSelectedBatch(null);
 
-  // 🔹 Calculate total amount with commas
   const calculateTotalAmount = (batch) =>
-    (batch.payments || []).reduce((sum, p) => sum + Number(p.amount || 0), 0)
-      .toLocaleString();
+    (batch.payments || []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   // Pagination
   const indexOfLast = currentPage * itemsPerPage;
@@ -118,7 +112,9 @@ export default function ManagePayroll() {
                       {b.status === "Draft" && (
                         <>
                           <button onClick={() => editBatch(b.id)}>Edit</button>
-                          <button onClick={() => submitDraft(b.id)}>Submit</button>
+                          <button onClick={() => submitDraft(b.id)}>
+                            Submit
+                          </button>
                           <button onClick={() => remove(b.id)}>Delete</button>
                         </>
                       )}
@@ -129,32 +125,30 @@ export default function ManagePayroll() {
             </table>
           </div>
 
-          {/* Pagination controls */}
-          {totalPages > 1 && (
-            <div className="d-flex justify-content-center mt-3">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(currentPage - 1)}
-              >
-                Prev
-              </button>
-              <span className="mx-2">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(currentPage + 1)}
-              >
-                Next
-              </button>
-            </div>
-          )}
+          {/* Pagination */}
+          <div className="d-flex justify-content-center mt-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
+            >
+              Previous
+            </button>
+            <span className="mx-2">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(currentPage + 1)}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* View Modal */}
+      {/* Modal */}
       {selectedBatch && (
-        <div className="modal show d-block" tabIndex="-1">
+        <div className="modal d-block" tabIndex="-1">
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
@@ -166,27 +160,7 @@ export default function ManagePayroll() {
                 ></button>
               </div>
               <div className="modal-body">
-                <p>
-                  <strong>Batch ID:</strong> {selectedBatch.id}
-                </p>
-                <p>
-                  <strong>Status:</strong> {selectedBatch.status}
-                </p>
-                <p>
-                  <strong>Payments:</strong>
-                </p>
-                <ul>
-                  {selectedBatch.payments.map((p, idx) => (
-                    <li key={idx}>
-                      {p.payeeName} - {p.amount}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={closeModal}>
-                  Close
-                </button>
+                <pre>{JSON.stringify(selectedBatch, null, 2)}</pre>
               </div>
             </div>
           </div>
