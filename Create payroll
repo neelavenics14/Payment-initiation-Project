@@ -1,61 +1,61 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import PrimaryButton from "../../common/components/PrimaryButton";
+import { useNavigate } from "react-router-dom";
 
 const BASE_URL = "http://localhost:8080/api/payroll";
 
 export default function PayrollPayment() {
-  const navigate = useNavigate();
-
   const [instruction, setInstruction] = useState({
-    paymentCurrency: "",
-    debitAccount: "",
+    paymentCurrency: "INR",
+    debitAccount: "Corporate INR",
     date: "",
   });
+  const [payments, setPayments] = useState([]);
+  const [payment, setPayment] = useState({
+    payeeDetails: "",
+    payeeName: "",
+    accountNumber: "",
+    reference: "",
+    amount: "",
+  });
+  const [status, setStatus] = useState("Draft");
+  const navigate = useNavigate();
 
-  const [payments, setPayments] = useState([
-    {
-      payeeDetails: "",
-      payeeName: "",
-      accountNumber: "",
-      reference: `REF-${Date.now()}`,
-      amount: "",
-    },
-  ]);
-
+  // 🔹 handle change in instruction form
   const handleInstructionChange = (e) => {
-    const { name, value } = e.target;
-    setInstruction((prev) => ({ ...prev, [name]: value }));
+    setInstruction({ ...instruction, [e.target.name]: e.target.value });
   };
 
-  const handlePaymentChange = (index, e) => {
-    const { name, value } = e.target;
-    setPayments((prev) => {
-      const updated = [...prev];
-      updated[index][name] = value;
-      return updated;
-    });
+  // 🔹 handle change in payments form
+  const handlePaymentChange = (e) => {
+    setPayment({ ...payment, [e.target.name]: e.target.value });
   };
 
-  const addPaymentRow = () => {
-    setPayments((prev) => [
-      ...prev,
-      {
+  // 🔹 add one payment row
+  const addPayment = () => {
+    if (payment.payeeName && payment.amount) {
+      setPayments([...payments, payment]);
+      setPayment({
         payeeDetails: "",
         payeeName: "",
         accountNumber: "",
-        reference: `REF-${Date.now()}`,
+        reference: "",
         amount: "",
-      },
-    ]);
+      });
+    } else {
+      alert("Payee Name and Amount are required.");
+    }
   };
 
-  const removePaymentRow = (index) => {
-    setPayments((prev) => prev.filter((_, i) => i !== index));
+  // 🔹 remove a payment
+  const removePayment = (index) => {
+    const newPayments = [...payments];
+    newPayments.splice(index, 1);
+    setPayments(newPayments);
   };
 
-  const saveBatch = async (status) => {
+  // 🔹 submit batch to backend
+  const submitBatch = async () => {
     const batch = {
       instruction,
       payments,
@@ -66,179 +66,143 @@ export default function PayrollPayment() {
 
     try {
       await axios.post(`${BASE_URL}/batch`, batch);
-      alert(`Batch ${status} successfully!`);
-      navigate("/managepayroll"); // go back to ManagePayroll
-    } catch (error) {
-      console.error(error);
+      alert("Batch saved successfully!");
+      navigate("/manage-payroll"); // redirect to ManagePayroll after saving
+    } catch (err) {
+      console.error("Failed to save batch", err);
       alert("Failed to save batch. Check console for details.");
     }
   };
 
-  const totalAmount = payments.reduce(
-    (sum, p) => sum + (Number(p.amount) || 0),
-    0
-  );
-
   return (
-    <div className="container p-2">
-      <div className="card p-3">
-        <h2 className="text-center mb-3">Create Payroll Payments</h2>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            saveBatch("Submitted");
-          }}
-        >
-          {/* Instruction Details */}
-          <h4>Instruction Details</h4>
-          <div className="row mb-3">
-            <div className="col">
-              <label>Debit Account *</label>
-              <select
-                name="debitAccount"
-                value={instruction.debitAccount}
-                onChange={handleInstructionChange}
-                className="form-select"
-                required
-              >
-                <option value="">Select Debit Account</option>
-                <option value="Corporate INR">Corporate INR</option>
-                <option value="Corporate USD">Corporate USD</option>
-              </select>
-            </div>
-
-            <div className="col">
-              <label>Currency *</label>
-              <select
+    <div className="container mt-3">
+      <div className="card shadow-sm">
+        <div className="card-header">
+          <h3>Create Payroll Batch</h3>
+        </div>
+        <div className="card-body">
+          {/* Instruction Section */}
+          <h5>Instruction</h5>
+          <div className="row mb-2">
+            <div className="col-md-4">
+              <label>Currency</label>
+              <input
                 name="paymentCurrency"
                 value={instruction.paymentCurrency}
                 onChange={handleInstructionChange}
-                className="form-select"
-                required
-              >
-                <option value="">Select Currency</option>
-                <option value="INR">INR</option>
-                <option value="USD">USD</option>
-              </select>
+                className="form-control"
+              />
             </div>
-
-            <div className="col">
-              <label>Date *</label>
+            <div className="col-md-4">
+              <label>Debit Account</label>
+              <input
+                name="debitAccount"
+                value={instruction.debitAccount}
+                onChange={handleInstructionChange}
+                className="form-control"
+              />
+            </div>
+            <div className="col-md-4">
+              <label>Date</label>
               <input
                 type="date"
                 name="date"
                 value={instruction.date}
                 onChange={handleInstructionChange}
                 className="form-control"
-                required
               />
             </div>
           </div>
 
-          {/* Payment Details */}
-          <h4>Payment Details</h4>
-          <table className="table table-bordered text-center mb-0">
-            <thead className="table-light">
-              <tr>
-                <th>S. No.</th>
-                <th>Reference</th>
-                <th>Payee Role</th>
-                <th>Payee Name</th>
-                <th>Account Number</th>
-                <th>Amount</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map((p, i) => (
-                <tr key={i}>
-                  <td>{i + 1}</td>
-                  <td>
-                    <input
-                      className="form-control form-control-sm"
-                      name="reference"
-                      value={p.reference}
-                      readOnly
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="form-control form-control-sm"
-                      name="payeeDetails"
-                      value={p.payeeDetails}
-                      onChange={(e) => handlePaymentChange(i, e)}
-                      required
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="form-control form-control-sm"
-                      name="payeeName"
-                      value={p.payeeName}
-                      onChange={(e) => handlePaymentChange(i, e)}
-                      required
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="form-control form-control-sm"
-                      name="accountNumber"
-                      value={p.accountNumber}
-                      onChange={(e) => handlePaymentChange(i, e)}
-                      required
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="form-control form-control-sm"
-                      type="number"
-                      name="amount"
-                      value={p.amount}
-                      onChange={(e) => handlePaymentChange(i, e)}
-                      required
-                    />
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-danger"
-                      onClick={() => removePaymentRow(i)}
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Total Amount */}
-          <div style={{ textAlign: "right", marginTop: "10px" }}>
-            <strong>Total Amount: {totalAmount}</strong>
-          </div>
-
-          {/* Buttons */}
-          <div className="d-flex justify-content-between align-items-center my-2">
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              onClick={addPaymentRow}
-            >
-              + Add Payment Row
-            </button>
-            <div className="d-flex gap-2">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={() => saveBatch("Draft")}
-              >
-                Save as Draft
+          {/* Payments Section */}
+          <h5>Payments</h5>
+          <div className="row mb-2">
+            <div className="col-md-3">
+              <input
+                placeholder="Payee Name"
+                name="payeeName"
+                value={payment.payeeName}
+                onChange={handlePaymentChange}
+                className="form-control"
+              />
+            </div>
+            <div className="col-md-2">
+              <input
+                placeholder="Payee Details"
+                name="payeeDetails"
+                value={payment.payeeDetails}
+                onChange={handlePaymentChange}
+                className="form-control"
+              />
+            </div>
+            <div className="col-md-2">
+              <input
+                placeholder="Account Number"
+                name="accountNumber"
+                value={payment.accountNumber}
+                onChange={handlePaymentChange}
+                className="form-control"
+              />
+            </div>
+            <div className="col-md-2">
+              <input
+                placeholder="Reference"
+                name="reference"
+                value={payment.reference}
+                onChange={handlePaymentChange}
+                className="form-control"
+              />
+            </div>
+            <div className="col-md-2">
+              <input
+                placeholder="Amount"
+                name="amount"
+                value={payment.amount}
+                onChange={handlePaymentChange}
+                className="form-control"
+              />
+            </div>
+            <div className="col-md-1">
+              <button onClick={addPayment} className="btn btn-success">
+                +
               </button>
-              <PrimaryButton type="submit">Submit</PrimaryButton>
             </div>
           </div>
-        </form>
+
+          <ul className="list-group mb-3">
+            {payments.map((p, i) => (
+              <li
+                key={i}
+                className="list-group-item d-flex justify-content-between"
+              >
+                {p.payeeName} - {p.amount}
+                <button
+                  onClick={() => removePayment(i)}
+                  className="btn btn-danger btn-sm"
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* Status */}
+          <div className="mb-3">
+            <label>Status</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="form-select"
+            >
+              <option value="Draft">Draft</option>
+              <option value="Submitted">Submitted</option>
+            </select>
+          </div>
+
+          <button onClick={submitBatch} className="btn btn-primary">
+            Save Payroll Batch
+          </button>
+        </div>
       </div>
     </div>
   );
