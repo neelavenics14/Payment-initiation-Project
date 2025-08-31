@@ -1,0 +1,159 @@
+package com.example.payroll.model;
+
+import jakarta.persistence.Embeddable;
+
+@Embeddable
+public class Instruction {
+    private String paymentCurrency;
+    private String debitAccount;
+    private String date;
+
+    public String getPaymentCurrency() { return paymentCurrency; }
+    public void setPaymentCurrency(String paymentCurrency) { this.paymentCurrency = paymentCurrency; }
+
+    public String getDebitAccount() { return debitAccount; }
+    public void setDebitAccount(String debitAccount) { this.debitAccount = debitAccount; }
+
+    public String getDate() { return date; }
+    public void setDate(String date) { this.date = date; }
+}
+package com.example.payroll.model;
+
+import jakarta.persistence.Embeddable;
+
+@Embeddable
+public class Payment {
+    private String payeeDetails;
+    private String payeeName;
+    private String accountNumber;
+    private String reference;
+    private String amount;
+
+    public String getPayeeDetails() { return payeeDetails; }
+    public void setPayeeDetails(String payeeDetails) { this.payeeDetails = payeeDetails; }
+
+    public String getPayeeName() { return payeeName; }
+    public void setPayeeName(String payeeName) { this.payeeName = payeeName; }
+
+    public String getAccountNumber() { return accountNumber; }
+    public void setAccountNumber(String accountNumber) { this.accountNumber = accountNumber; }
+
+    public String getReference() { return reference; }
+    public void setReference(String reference) { this.reference = reference; }
+
+    public String getAmount() { return amount; }
+    public void setAmount(String amount) { this.amount = amount; }
+}
+package com.example.payroll.model;
+
+import jakarta.persistence.*;
+import java.util.List;
+
+@Entity
+@Table(name = "payroll_batches")
+public class PayrollBatch {
+
+    @Id
+    private Long id;
+
+    @Embedded
+    private Instruction instruction;
+
+    @ElementCollection
+    @CollectionTable(name = "payments", joinColumns = @JoinColumn(name = "batch_id"))
+    private List<Payment> payments;
+
+    private String status;
+    private String createdAt;
+    private String updatedAt;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public Instruction getInstruction() { return instruction; }
+    public void setInstruction(Instruction instruction) { this.instruction = instruction; }
+
+    public List<Payment> getPayments() { return payments; }
+    public void setPayments(List<Payment> payments) { this.payments = payments; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+}
+package com.example.payroll.repository;
+
+import com.example.payroll.model.PayrollBatch;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface PayrollBatchRepository extends JpaRepository<PayrollBatch, Long> {
+}
+package com.example.payroll.service;
+
+import com.example.payroll.model.PayrollBatch;
+import com.example.payroll.repository.PayrollBatchRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class PayrollService {
+
+    private final PayrollBatchRepository repository;
+
+    public PayrollService(PayrollBatchRepository repository) {
+        this.repository = repository;
+    }
+
+    public PayrollBatch saveBatch(PayrollBatch batch) {
+        return repository.save(batch);
+    }
+
+    public List<PayrollBatch> getAllBatches() {
+        return repository.findAll();
+    }
+
+    public PayrollBatch getBatchById(Long id) {
+        return repository.findById(id).orElse(null);
+    }
+}
+package com.example.payroll.controller;
+
+import com.example.payroll.model.PayrollBatch;
+import com.example.payroll.service.PayrollService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/payroll")
+@CrossOrigin(origins = "http://localhost:3000") // React frontend
+public class PayrollController {
+
+    private final PayrollService service;
+
+    public PayrollController(PayrollService service) {
+        this.service = service;
+    }
+
+    @PostMapping("/batch")
+    public PayrollBatch saveOrSubmitBatch(@RequestBody PayrollBatch batch) {
+        return service.saveBatch(batch);
+    }
+
+    @GetMapping("/batch")
+    public List<PayrollBatch> getAllBatches() {
+        return service.getAllBatches();
+    }
+
+    @GetMapping("/batch/{id}")
+    public PayrollBatch getBatchById(@PathVariable Long id) {
+        return service.getBatchById(id);
+    }
+}
