@@ -25,11 +25,6 @@ export default function ManagePayroll() {
     fetchBatches();
   }, []);
 
-  // Add new batch immediately after creation
-  const addNewBatch = (batch) => {
-    setBatches((prev) => [batch, ...prev]);
-  };
-
   const editBatch = (batchId) => {
     navigate("/payroll", { state: { batchId } });
   };
@@ -71,9 +66,6 @@ export default function ManagePayroll() {
 
   return (
     <div className="container-fluid p-0">
-      {/* Include PayrollPayment here if needed */}
-      {/* <PayrollPayment addNewBatch={addNewBatch} /> */}
-
       <div className="card">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h2>Manage Payroll</h2>
@@ -109,16 +101,84 @@ export default function ManagePayroll() {
                     <td>{calculateTotalAmount(b)} {b.instruction?.paymentCurrency}</td>
                     <td>{b.status}</td>
                     <td>
-                      <button onClick={() => viewDetails(b)}>View</button>
+                      <button className="btn btn-sm btn-info me-2" onClick={() => viewDetails(b)}>View</button>
                       {b.status === "Draft" && (
                         <>
-                          <button onClick={() => editBatch(b.id)}>Edit</button>
-                          <button onClick={() => submitDraft(b.id)}>Submit</button>
-                          <button onClick={() => remove(b.id)}>Delete</button>
+                          <button className="btn btn-sm btn-primary me-2" onClick={() => editBatch(b.id)}>Edit</button>
+                          <button className="btn btn-sm btn-success me-2" onClick={() => submitDraft(b.id)}>Submit</button>
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => remove(b.id)}>Delete</button>
                         </>
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="d-flex justify-content-center mt-3">
+              <button className="btn btn-secondary me-2" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>Prev</button>
+              <span className="align-self-center">Page {currentPage} of {totalPages}</span>
+              <button className="btn btn-secondary ms-2" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>Next</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Batch Details Modal */}
+      {selectedBatch && (
+        <div className="modal fade show" style={{ display: "block", background: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Batch Details — {selectedBatch.id}</h5>
+                <button type="button" className="btn-close" onClick={closeModal}></button>
+              </div>
+              <div className="modal-body">
+                <h6>Instruction Details</h6>
+                <ul>
+                  <li><strong>Currency:</strong> {selectedBatch.instruction.paymentCurrency}</li>
+                  <li><strong>Debit Account:</strong> {selectedBatch.instruction.debitAccount}</li>
+                  <li><strong>Date:</strong> {selectedBatch.instruction.date}</li>
+                </ul>
+
+                <h6>Payments</h6>
+                <div className="table-responsive">
+                  <table className="table table-sm table-bordered">
+                    <thead>
+                      <tr>
+                        <th>Sl. No</th>
+                        <th>Reference</th>
+                        <th>Payee Role</th>
+                        <th>Payee Name</th>
+                        <th>Account Number</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedBatch.payments.map((p, idx) => (
+                        <tr key={idx}>
+                          <td>{idx + 1}</td>
+                          <td>{p.reference}</td>
+                          <td>{p.payeeDetails}</td>
+                          <td>{p.payeeName}</td>
+                          <td>{p.accountNumber}</td>
+                          <td>{p.amount} {selectedBatch.instruction.paymentCurrency}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
