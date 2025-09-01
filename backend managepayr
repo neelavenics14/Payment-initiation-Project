@@ -1,11 +1,11 @@
-package com.scb.paymentinitiation.managepayroll.model;
+package com.scb.paymentinitiation.createpayroll.model;
 
 import jakarta.persistence.*;
 import java.util.List;
 
 @Entity
-@Table(name = "payroll_batches")  // same table as CreatePayroll
-public class ManagePayrollBatch {
+@Table(name = "payroll_batches")
+public class PayrollBatch {
 
     @Id
     private Long id;
@@ -21,6 +21,7 @@ public class ManagePayrollBatch {
     private String createdAt;
     private String updatedAt;
 
+    // Getters & Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -39,8 +40,8 @@ public class ManagePayrollBatch {
     public String getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
 }
-/////////////////////////////////////////////////////////////////////////
-package com.scb.paymentinitiation.managepayroll.model;
+////////////////////////////////////////////////////////////////////////////////////
+package com.scb.paymentinitiation.createpayroll.model;
 
 import jakarta.persistence.Embeddable;
 
@@ -50,6 +51,7 @@ public class Instruction {
     private String debitAccount;
     private String date;
 
+    // Getters & Setters
     public String getPaymentCurrency() { return paymentCurrency; }
     public void setPaymentCurrency(String paymentCurrency) { this.paymentCurrency = paymentCurrency; }
 
@@ -59,21 +61,22 @@ public class Instruction {
     public String getDate() { return date; }
     public void setDate(String date) { this.date = date; }
 }
-//////////////////////////////////////////////////////////////////////////////////////
-package com.scb.paymentinitiation.managepayroll.model;
+//////////////////////////////////////////////////////////////////////////////////////////////
+package com.scb.paymentinitiation.createpayroll.model;
 
 import jakarta.persistence.Embeddable;
 
 @Embeddable
 public class Payment {
-    private String payeeDetails;
+    private String payeeRole;
     private String payeeName;
     private String accountNumber;
     private String reference;
     private String amount;
 
-    public String getPayeeDetails() { return payeeDetails; }
-    public void setPayeeDetails(String payeeDetails) { this.payeeDetails = payeeDetails; }
+    // Getters & Setters
+    public String getPayeeRole() { return payeeRole; }
+    public void setPayeeRole(String payeeRole) { this.payeeRole = payeeRole; }
 
     public String getPayeeName() { return payeeName; }
     public void setPayeeName(String payeeName) { this.payeeName = payeeName; }
@@ -87,148 +90,178 @@ public class Payment {
     public String getAmount() { return amount; }
     public void setAmount(String amount) { this.amount = amount; }
 }
-//////////////////////////////////////////////////////////////////////////////
-package com.scb.paymentinitiation.managepayroll.repository;
+/////////////////////////////////////////////////////////////////////////////////////
+package com.scb.paymentinitiation.createpayroll.repository;
 
-import com.scb.paymentinitiation.managepayroll.model.ManagePayrollBatch;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import com.scb.paymentinitiation.createpayroll.model.PayrollBatch;
 
 @Repository
-public interface ManagePayrollRepository extends JpaRepository<ManagePayrollBatch, Long> {
-}
-////////////////////////////////////////////////////////////////////////////////////
-package com.scb.paymentinitiation.managepayroll.service;
+public interface PayrollBatchRepository extends JpaRepository<PayrollBatch, Long> { }
+/////////////////////////////////////////////////////////////////////////////////////////
+package com.scb.paymentinitiation.createpayroll.service;
 
-import com.scb.paymentinitiation.managepayroll.model.ManagePayrollBatch;
-import com.scb.paymentinitiation.managepayroll.repository.ManagePayrollRepository;
+import com.scb.paymentinitiation.createpayroll.model.PayrollBatch;
+import com.scb.paymentinitiation.createpayroll.repository.PayrollBatchRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-public class ManagePayrollService {
+public class PayrollService {
 
-    private final ManagePayrollRepository repository;
+    private final PayrollBatchRepository repository;
 
-    public ManagePayrollService(ManagePayrollRepository repository) {
+    public PayrollService(PayrollBatchRepository repository) {
         this.repository = repository;
     }
 
-    public List<ManagePayrollBatch> getAllBatches() {
-        return repository.findAll();
-    }
-
-    public ManagePayrollBatch getBatchById(Long id) {
-        return repository.findById(id).orElse(null);
-    }
-
-    public ManagePayrollBatch saveBatch(ManagePayrollBatch batch) {
+    public PayrollBatch saveBatch(PayrollBatch batch) {
         return repository.save(batch);
     }
 
-    public ManagePayrollBatch updateBatch(Long id, ManagePayrollBatch updatedBatch) {
-        return repository.findById(id).map(batch -> {
-            batch.setInstruction(updatedBatch.getInstruction());
-            batch.setPayments(updatedBatch.getPayments());
-            batch.setStatus(updatedBatch.getStatus());
-            batch.setUpdatedAt(updatedBatch.getUpdatedAt());
-            return repository.save(batch);
-        }).orElse(null);
+    public List<PayrollBatch> getAllBatches() {
+        return repository.findAll();
     }
 
-    public void deleteBatch(Long id) {
-        repository.deleteById(id);
+    public PayrollBatch getBatchById(Long id) {
+        return repository.findById(id).orElse(null);
     }
 }
-///////////////////////////////////////////////////////////////
-package com.scb.paymentinitiation.managepayroll.controller;
+//////////////////////////////////////////////////////////////////////
+package com.scb.paymentinitiation.createpayroll.controller;
 
-import com.scb.paymentinitiation.managepayroll.model.ManagePayrollBatch;
-import com.scb.paymentinitiation.managepayroll.service.ManagePayrollService;
+import com.scb.paymentinitiation.createpayroll.model.PayrollBatch;
+import com.scb.paymentinitiation.createpayroll.service.PayrollService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/manage-payroll")
-@CrossOrigin(origins = "http://localhost:3000") // allow React
-public class ManagePayrollController {
+@RequestMapping("/api/payroll")
+@CrossOrigin(origins = "http://localhost:3000")
+public class PayrollController {
 
-    private final ManagePayrollService service;
+    private final PayrollService service;
 
-    public ManagePayrollController(ManagePayrollService service) {
+    public PayrollController(PayrollService service) {
         this.service = service;
     }
 
+    @PostMapping("/batch")
+    public PayrollBatch saveOrSubmitBatch(@RequestBody PayrollBatch batch) {
+        return service.saveBatch(batch);
+    }
+
     @GetMapping("/batch")
-    public List<ManagePayrollBatch> getAll() {
+    public List<PayrollBatch> getAllBatches() {
         return service.getAllBatches();
     }
 
     @GetMapping("/batch/{id}")
-    public ManagePayrollBatch getById(@PathVariable Long id) {
+    public PayrollBatch getBatchById(@PathVariable Long id) {
         return service.getBatchById(id);
     }
-
-    @PostMapping("/batch")
-    public ManagePayrollBatch create(@RequestBody ManagePayrollBatch batch) {
-        return service.saveBatch(batch);
-    }
-
-    @PutMapping("/batch/{id}")
-    public ManagePayrollBatch update(@PathVariable Long id, @RequestBody ManagePayrollBatch batch) {
-        return service.updateBatch(id, batch);
-    }
-
-    @DeleteMapping("/batch/{id}")
-    public void delete(@PathVariable Long id) {
-        service.deleteBatch(id);
-    }
 }
-///////////////////////////////////////////
-package com.scb.paymentinitiation.managepayroll.model;
+/////////////////////////////////////////////////////////////////////////////
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import PrimaryButton from "../../common/components/PrimaryButton";
 
-import jakarta.persistence.*;
-import java.util.List;
+const BASE_URL = "http://localhost:8080/api/payroll";
 
-@Entity
-@Table(name = "manage_payroll_batches")
-public class ManagePayrollBatch {
+export default function ManagePayroll() {
+  const navigate = useNavigate();
+  const [batches, setBatches] = useState([]);
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  // Fetch all batches
+  const fetchBatches = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/batch`);
+      setBatches(res.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-    @Embedded
-    private Instruction instruction;
+  useEffect(() => {
+    fetchBatches();
+  }, []);
 
-    @ElementCollection
-    @CollectionTable(name = "manage_payments", joinColumns = @JoinColumn(name = "batch_id"))
-    private List<Payment> payments;
+  // Delete a batch
+  const deleteBatch = async (id) => {
+    try {
+      await axios.delete(`${BASE_URL}/batch/${id}`);
+      fetchBatches(); // refresh after delete
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-    private String status;
-    private String createdAt;
-    private String updatedAt;
+  // Navigate to edit page
+  const editBatch = (batch) => {
+    navigate("/payroll-payment", { state: { batch } });
+  };
 
-    // --- Getters & Setters ---
+  return (
+    <div className="container p-2">
+      <div className="card p-3">
+        <h2 className="text-center mb-3">Manage Payroll</h2>
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+        <table className="table table-bordered text-center">
+          <thead className="table-light">
+            <tr>
+              <th>S. No.</th>
+              <th>Debit Account</th>
+              <th>Currency</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Total Amount</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {batches.map((batch, index) => {
+              const totalAmount = batch.payments?.reduce(
+                (sum, p) => sum + Number(p.amount || 0),
+                0
+              );
+              return (
+                <tr key={batch.id}>
+                  <td>{index + 1}</td>
+                  <td>{batch.instruction?.debitAccount}</td>
+                  <td>{batch.instruction?.paymentCurrency}</td>
+                  <td>{batch.instruction?.date}</td>
+                  <td>{batch.status}</td>
+                  <td className="text-end">{totalAmount}</td>
+                  <td>
+                    <button
+                      className="btn btn-sm btn-primary me-1"
+                      onClick={() => editBatch(batch)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => deleteBatch(batch.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
 
-    public Instruction getInstruction() { return instruction; }
-    public void setInstruction(Instruction instruction) { this.instruction = instruction; }
-
-    public List<Payment> getPayments() { return payments; }
-    public void setPayments(List<Payment> payments) { this.payments = payments; }
-
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-
-    public String getCreatedAt() { return createdAt; }
-    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
-
-    public String getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+        <div className="text-end mt-3">
+          <PrimaryButton onClick={() => navigate("/payroll-payment")}>
+            + Create New Payroll
+          </PrimaryButton>
+        </div>
+      </div>
+    </div>
+  );
 }
-
