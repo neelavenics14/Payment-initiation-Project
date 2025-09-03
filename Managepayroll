@@ -594,6 +594,25 @@ const refresh = async () => {
 };
 
 
+//////////////////////////////////////////////////////////
+useEffect(() => {
+  const fetchAndSort = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/batch`);
+
+      // sort newest createdAt first
+      const sorted = [...res.data].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+
+      setBatches(sorted);
+    } catch (err) {
+      console.error("Error fetching batches:", err);
+    }
+  };
+
+  fetchAndSort();
+}, []);
 
 
 
