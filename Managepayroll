@@ -613,7 +613,17 @@ useEffect(() => {
 
   fetchAndSort();
 }, []);
+////////////////////////////////
+const sortedBatches = [...batches].sort((a, b) => {
+    const dateA = new Date(a.createdAt);
+    const dateB = new Date(b.createdAt);
+    return dateB - dateA; // latest first
+  });
 
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentBatches = sortedBatches.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(sortedBatches.length / itemsPerPage);
 
 
 
