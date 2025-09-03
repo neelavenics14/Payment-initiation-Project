@@ -560,6 +560,24 @@ export default function ManagePayroll() {
   );
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////
+const refresh = async () => {
+  try {
+    const res = await axios.get(`${BASE_URL}/batch`);
+
+    // Sort so the most recent action (updatedAt if present, else createdAt) comes first
+    const sorted = res.data.sort((a, b) => {
+      const timeA = new Date(a.updatedAt || a.createdAt);
+      const timeB = new Date(b.updatedAt || b.createdAt);
+      return timeB - timeA; // latest first
+    });
+
+    setBatches(sorted);
+  } catch (err) {
+    console.error("Error fetching batches:", err);
+  }
+};
+
 
 
 
