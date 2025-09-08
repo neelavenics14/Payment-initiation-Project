@@ -1,0 +1,56 @@
+@Service
+public class ManagePayrollService {
+    private final PayrollBatchRepository repository;
+
+    public ManagePayrollService(PayrollBatchRepository repository) {
+        this.repository = repository;
+    }
+
+    public List<PayrollBatch> getAllBatches() {
+        return repository.findAll();
+    }
+
+    public PayrollBatch updateBatch(Long id, PayrollBatch updated) {
+        return repository.findById(id).map(batch -> {
+            batch.setStatus(updated.getStatus());
+            batch.setUpdatedAt(updated.getUpdatedAt());
+            batch.setInstruction(updated.getInstruction());
+            batch.setPayments(updated.getPayments());
+            return repository.save(batch);
+        }).orElseThrow(() -> new RuntimeException("Batch not found"));
+    }
+
+    public void deleteBatch(Long id) {
+        repository.deleteById(id);
+    }
+}
+....................................................................
+@RestController
+@RequestMapping("/api/manage-payroll")
+@CrossOrigin(origins = "http://localhost:3000")
+public class ManagePayrollController {
+
+    private final ManagePayrollService service;
+
+    public ManagePayrollController(ManagePayrollService service) {
+        this.service = service;
+    }
+
+    // Fetch all batches
+    @GetMapping("/batch")
+    public List<PayrollBatch> getAllBatches() {
+        return service.getAllBatches();
+    }
+
+    // Update batch
+    @PutMapping("/batch/{id}")
+    public PayrollBatch updateBatch(@PathVariable Long id, @RequestBody PayrollBatch updated) {
+        return service.updateBatch(id, updated);
+    }
+
+    // Delete batch
+    @DeleteMapping("/batch/{id}")
+    public void deleteBatch(@PathVariable Long id) {
+        service.deleteBatch(id);
+    }
+}
